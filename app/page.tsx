@@ -80,6 +80,7 @@ export default function Home() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [isListening, setIsListening] = useState(false);
   const [listenAmplitude, setListenAmplitude] = useState(0);
+  const [speechSupported, setSpeechSupported] = useState(true);
 
   // Handle Light Mode
   useEffect(() => {
@@ -97,6 +98,11 @@ export default function Home() {
   const { amplitude, playWithAmplitude, stop } = useAudioAmplitude();
 
   useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    const supported = typeof window !== 'undefined' &&
+      Boolean((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
+    setSpeechSupported(supported);
+  }, []);
 
   useEffect(() => {
     // Only scroll within the chat container, not the whole page
@@ -229,8 +235,8 @@ export default function Home() {
         setIsTalking(false);
       }
 
-      // Auto-listen again after speaking reply
-      setTimeout(() => startListening(), 500);
+      // Auto-listen again after speaking reply (gesture-safe contexts only)
+      setTimeout(() => startListening(true), 500);
     } catch {
       setChatHistory(prev => [...prev, { role: 'assistant', content: 'Error — check your API keys.' }]);
     } finally {
@@ -254,9 +260,14 @@ export default function Home() {
   };
 
   // ── Speech-to-Text via Web Speech API ──────────────────
-  const startListening = useCallback(() => {
+  const startListening = useCallback((fromAuto = false) => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) { alert('Speech recognition not supported in this browser.'); return; }
+    if (!SpeechRecognition) {
+      setSpeechSupported(false);
+      return;
+    }
+    // Mobile browsers often reject non-user-gesture microphone starts.
+    if (fromAuto && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) return;
 
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
@@ -271,15 +282,22 @@ export default function Home() {
     };
     recognition.onerror = (e: any) => { 
       console.warn('SpeechRecognition error:', e.error);
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') setSpeechSupported(false);
       setIsListening(false); 
       stopListenAmplitude(); 
     };
     recognition.onend = () => { setIsListening(false); stopListenAmplitude(); };
 
     recognitionRef.current = recognition;
-    recognition.start();
-    setIsListening(true);
-    startListenAmplitude();
+    try {
+      recognition.start();
+      setIsListening(true);
+      startListenAmplitude();
+    } catch (e) {
+      console.warn('SpeechRecognition start failed:', e);
+      setIsListening(false);
+      stopListenAmplitude();
+    }
   }, [conversationMode]);
 
   const stopListening = useCallback(() => {
@@ -486,7 +504,15 @@ export default function Home() {
 
               {/* Large mic button */}
               <button
-                onClick={() => { playClick(); isListening ? stopListening() : startListening(); }}
+                onClick={() => {
+                  playClick();
+                  if (!speechSupported) {
+                    const typed = window.prompt('Voice input is limited on this phone/browser. Type your message:');
+                    if (typed?.trim()) askVoice(typed);
+                    return;
+                  }
+                  isListening ? stopListening() : startListening();
+                }}
                 disabled={loading || isTalking}
                 className={`w-14 h-14 md:w-16 md:h-16 flex items-center justify-center rounded-full transition-all duration-300 ${
                   isListening
@@ -511,6 +537,11 @@ export default function Home() {
                   isSpeaking={isTalking}
                 />
               </div>
+              {!speechSupported && (
+                <div className="font-mono text-[10px] text-white/35 text-center max-w-[270px] leading-relaxed">
+                  Speech recognition is limited on this phone/browser. Tap mic to use typed fallback.
+                </div>
+              )}
 
             </div>
           ) : (
@@ -595,8 +626,8 @@ export default function Home() {
                   } catch {
                     setIsTalking(false);
                   }
-                  // Auto-start listening after greeting
-                  setTimeout(() => startListening(), 500);
+                  // Auto-start listening after greeting (gesture-safe contexts only)
+                  setTimeout(() => startListening(true), 500);
                 } else {
                   // Turning off — stop listening
                   stopListening();

@@ -161,7 +161,9 @@ export default function AsciiModelAvatar({
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(w, h);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    // Lower initial GPU cost on phones for faster first render.
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.25 : 2));
     renderer.setClearColor(0x0a0a0a, 1);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -189,7 +191,7 @@ export default function AsciiModelAvatar({
 
     // Front facing Canvas
     const canvas2d = document.createElement('canvas');
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = Math.min(window.devicePixelRatio || 1, isMobile ? 1.25 : 2);
     canvas2d.width = w * dpr;
     canvas2d.height = h * dpr;
     canvas2d.style.position = 'absolute';

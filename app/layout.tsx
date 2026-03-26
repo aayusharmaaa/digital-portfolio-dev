@@ -13,6 +13,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        {/* Warm up avatar model download to reduce first-load delay */}
+        <link rel="preload" href="/model.glb" as="fetch" type="model/gltf-binary" crossOrigin="anonymous" />
+      </head>
       <body>{children}</body>
     </html>
   );

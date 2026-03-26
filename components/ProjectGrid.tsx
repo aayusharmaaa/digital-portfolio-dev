@@ -39,6 +39,7 @@ const PROJECTS = [
 
 function ProjectCard({ project, index }: { project: typeof PROJECTS[0]; index: number }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const isPlaceholderLink = !project.link || project.link === '#';
 
   const handleMouseEnter = () => {
     if (videoRef.current) {
@@ -55,12 +56,15 @@ function ProjectCard({ project, index }: { project: typeof PROJECTS[0]; index: n
 
   return (
     <motion.a
-      href={project.link}
+      href={isPlaceholderLink ? undefined : project.link}
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ delay: index * 0.1, duration: 0.4 }}
       whileHover={{ y: -8, scale: 1.02 }}
+      onClick={(e) => {
+        if (isPlaceholderLink) e.preventDefault();
+      }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       className="group block relative hover:z-20 outline-none touch-manipulation"
