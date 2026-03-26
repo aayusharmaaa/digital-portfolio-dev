@@ -1,0 +1,10 @@
+.next/
+node_modules/
+.env.local
+.env*.local
+*.tsbuildinfo
+
+# Large local/source files not needed in repo
+*.blend
+*.blend1
+*.MOV
