@@ -54,7 +54,7 @@ const CURRENTLY: {
 const GREETING = "Hey, what's up! I'm Aayush. Feel free to ask me anything — about my projects, experience, or whatever's on your mind.";
 const HUMAN_GREETING = "Hey! Have a conversation with me. Just speak and I'll respond.";
 
-type Message = { role: 'user' | 'assistant'; content: string };
+type Message = { id?: string; role: 'user' | 'assistant'; content: string };
 
 export default function Home() {
   const [promptIdx, setPromptIdx] = useState(0);
@@ -94,10 +94,14 @@ export default function Home() {
   const recognitionRef = useRef<any>(null);
   const listenAnimRef = useRef(0);
   const listenStreamRef = useRef<MediaStream | null>(null);
+  const revealAnimRef = useRef(0);
 
   const { amplitude, playWithAmplitude, stop } = useAudioAmplitude();
 
   useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    return () => cancelAnimationFrame(revealAnimRef.current);
+  }, []);
   useEffect(() => {
     const supported = typeof window !== 'undefined' &&
       Boolean((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
@@ -159,7 +163,7 @@ export default function Home() {
 
   const ask = async (text: string) => {
     if (!text.trim() || loading) return;
-    const userMsg = { role: 'user' as const, content: text };
+    const userMsg = { id: crypto.randomUUID(), role: 'user' as const, content: text };
     const updated = [...chatHistory, userMsg];
     setChatHistory(updated);
     setInput('');
@@ -174,7 +178,42 @@ export default function Home() {
       });
       const data = await res.json();
       const reply: string = data.reply || data.error || 'Error getting response.';
-      setChatHistory(prev => [...prev, { role: 'assistant', content: reply }]);
+
+      const assistantId = crypto.randomUUID();
+      setChatHistory(prev => [...prev, { id: assistantId, role: 'assistant', content: '' }]);
+
+      const setAssistantContent = (content: string) => {
+        setChatHistory(prev => prev.map(m => (m.id === assistantId ? { ...m, content } : m)));
+      };
+      const getBlobDurationMs = (blob: Blob) =>
+        new Promise<number>((resolve) => {
+          const url = URL.createObjectURL(blob);
+          const audio = new Audio(url);
+          audio.preload = 'metadata';
+          audio.onloadedmetadata = () => {
+            const ms = Number.isFinite(audio.duration) ? Math.max(0, audio.duration * 1000) : 0;
+            URL.revokeObjectURL(url);
+            resolve(ms);
+          };
+          audio.onerror = () => {
+            URL.revokeObjectURL(url);
+            resolve(0);
+          };
+        });
+      const revealText = (fullText: string, totalMs: number) =>
+        new Promise<void>((resolve) => {
+          cancelAnimationFrame(revealAnimRef.current);
+          const duration = Math.max(900, Math.min(totalMs || fullText.length * 28, 12000));
+          const start = performance.now();
+          const tick = (now: number) => {
+            const p = Math.min(1, (now - start) / duration);
+            const count = Math.floor(fullText.length * p);
+            setAssistantContent(fullText.slice(0, count));
+            if (p < 1) revealAnimRef.current = requestAnimationFrame(tick);
+            else resolve();
+          };
+          revealAnimRef.current = requestAnimationFrame(tick);
+        });
 
       try {
         const voiceRes = await fetch('/api/voice', {
@@ -184,13 +223,18 @@ export default function Home() {
         });
         if (voiceRes.ok) {
           const blob = await voiceRes.blob();
+          const durationMs = await getBlobDurationMs(blob);
           setIsTalking(true);
-          await playWithAmplitude(blob);
+          await Promise.all([revealText(reply, durationMs), playWithAmplitude(blob)]);
           setIsTalking(false);
+        } else {
+          await revealText(reply, 0);
         }
       } catch {
+        await revealText(reply, 0);
         setIsTalking(false);
       }
+      setAssistantContent(reply);
     } catch {
       setChatHistory(prev => [...prev, { role: 'assistant', content: 'Error — check your API keys.' }]);
     } finally {
@@ -201,7 +245,7 @@ export default function Home() {
   // Voice-only ask for Human Mode: sends text, speaks the reply, then auto-listens again
   const askVoice = async (text: string) => {
     if (!text.trim() || loading) return;
-    const userMsg = { role: 'user' as const, content: text };
+    const userMsg = { id: crypto.randomUUID(), role: 'user' as const, content: text };
     
     // Always use the latest history from ref to avoid stale closures in setTimeout/callbacks
     const updated = [...chatHistoryRef.current, userMsg];
@@ -217,7 +261,41 @@ export default function Home() {
       });
       const data = await res.json();
       const reply: string = data.reply || data.error || 'Error getting response.';
-      setChatHistory(prev => [...prev, { role: 'assistant', content: reply }]);
+      const assistantId = crypto.randomUUID();
+      setChatHistory(prev => [...prev, { id: assistantId, role: 'assistant', content: '' }]);
+
+      const setAssistantContent = (content: string) => {
+        setChatHistory(prev => prev.map(m => (m.id === assistantId ? { ...m, content } : m)));
+      };
+      const getBlobDurationMs = (blob: Blob) =>
+        new Promise<number>((resolve) => {
+          const url = URL.createObjectURL(blob);
+          const audio = new Audio(url);
+          audio.preload = 'metadata';
+          audio.onloadedmetadata = () => {
+            const ms = Number.isFinite(audio.duration) ? Math.max(0, audio.duration * 1000) : 0;
+            URL.revokeObjectURL(url);
+            resolve(ms);
+          };
+          audio.onerror = () => {
+            URL.revokeObjectURL(url);
+            resolve(0);
+          };
+        });
+      const revealText = (fullText: string, totalMs: number) =>
+        new Promise<void>((resolve) => {
+          cancelAnimationFrame(revealAnimRef.current);
+          const duration = Math.max(900, Math.min(totalMs || fullText.length * 28, 12000));
+          const start = performance.now();
+          const tick = (now: number) => {
+            const p = Math.min(1, (now - start) / duration);
+            const count = Math.floor(fullText.length * p);
+            setAssistantContent(fullText.slice(0, count));
+            if (p < 1) revealAnimRef.current = requestAnimationFrame(tick);
+            else resolve();
+          };
+          revealAnimRef.current = requestAnimationFrame(tick);
+        });
 
       try {
         const voiceRes = await fetch('/api/voice', {
@@ -227,13 +305,18 @@ export default function Home() {
         });
         if (voiceRes.ok) {
           const blob = await voiceRes.blob();
+          const durationMs = await getBlobDurationMs(blob);
           setIsTalking(true);
-          await playWithAmplitude(blob);
+          await Promise.all([revealText(reply, durationMs), playWithAmplitude(blob)]);
           setIsTalking(false);
+        } else {
+          await revealText(reply, 0);
         }
       } catch {
+        await revealText(reply, 0);
         setIsTalking(false);
       }
+      setAssistantContent(reply);
 
       // Auto-listen again after speaking reply (gesture-safe contexts only)
       setTimeout(() => startListening(true), 500);
