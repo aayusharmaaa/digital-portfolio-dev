@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
 
   const results = [];
   for (const chunk of chunks) {
-    const embedding = await getEmbedding(chunk);
+    const embedding = await embedText(chunk);
     const { error } = await supabase.from('documents').insert({
       content: chunk,
       embedding,

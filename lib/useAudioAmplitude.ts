@@ -5,7 +5,8 @@ export function useAudioAmplitude() {
   const contextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const rafRef = useRef<number>(0);
-  const dataRef = useRef<Uint8Array | null>(null);
+  // Keep explicit ArrayBuffer-backed typed array for TS 5.9+ lib.dom compatibility.
+  const dataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const stop = useCallback(() => {
