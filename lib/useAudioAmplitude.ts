@@ -1,5 +1,17 @@
 import { useRef, useState, useCallback } from 'react';
 
+/** Speech energy for lip sync — frequency bins stay too flat for voice; RMS from waveform works. */
+function rmsFromAnalyser(analyser: AnalyserNode, timeScratch: Uint8Array<ArrayBuffer>): number {
+  analyser.getByteTimeDomainData(timeScratch);
+  let sum = 0;
+  for (let i = 0; i < timeScratch.length; i++) {
+    const z = (timeScratch[i]! - 128) / 128;
+    sum += z * z;
+  }
+  const rms = Math.sqrt(sum / timeScratch.length);
+  return Math.min(1, rms * 5);
+}
+
 /** Decode once; play via playBufferWithAmplitude inside a user gesture (required on iOS). */
 export async function decodeAudioBlob(blob: Blob): Promise<AudioBuffer | null> {
   if (typeof window === 'undefined') return null;
@@ -80,10 +92,10 @@ export function useAudioAmplitude() {
       if (ctx.state === 'suspended') void ctx.resume();
 
       const analyser = ctx.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.55;
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.45;
       analyserRef.current = analyser;
-      dataRef.current = new Uint8Array(analyser.frequencyBinCount);
+      dataRef.current = new Uint8Array(analyser.fftSize);
 
       const source = ctx.createBufferSource();
       source.buffer = buffer;
@@ -93,9 +105,7 @@ export function useAudioAmplitude() {
 
       const poll = () => {
         if (!analyserRef.current || !dataRef.current) return;
-        analyserRef.current.getByteFrequencyData(dataRef.current);
-        const avg = dataRef.current.reduce((a, b) => a + b, 0) / dataRef.current.length;
-        setAmplitude(avg / 128);
+        setAmplitude(rmsFromAnalyser(analyserRef.current, dataRef.current));
         rafRef.current = requestAnimationFrame(poll);
       };
 
@@ -109,12 +119,22 @@ export function useAudioAmplitude() {
           cleanup();
           resolve();
         };
-        try {
-          source.start(0);
-          poll();
-        } catch (e) {
-          cleanup();
-          reject(e instanceof Error ? e : new Error(String(e)));
+        const start = () => {
+          try {
+            source.start(0);
+            poll();
+          } catch (e) {
+            cleanup();
+            reject(e instanceof Error ? e : new Error(String(e)));
+          }
+        };
+        if (ctx.state === 'suspended') {
+          void ctx.resume().then(start).catch((e) => {
+            cleanup();
+            reject(e instanceof Error ? e : new Error(String(e)));
+          });
+        } else {
+          start();
         }
       });
     },
@@ -148,10 +168,10 @@ export function useAudioAmplitude() {
     if (ctx.state === 'suspended') void ctx.resume();
 
     const analyser = ctx.createAnalyser();
-    analyser.fftSize = 256;
-    analyser.smoothingTimeConstant = 0.55;
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.45;
     analyserRef.current = analyser;
-    dataRef.current = new Uint8Array(analyser.frequencyBinCount);
+    dataRef.current = new Uint8Array(analyser.fftSize);
 
     const source = ctx.createMediaElementSource(audio);
     source.connect(analyser);
@@ -159,9 +179,7 @@ export function useAudioAmplitude() {
 
     const poll = () => {
       if (!analyserRef.current || !dataRef.current) return;
-      analyserRef.current.getByteFrequencyData(dataRef.current);
-      const avg = dataRef.current.reduce((a, b) => a + b, 0) / dataRef.current.length;
-      setAmplitude(avg / 128);
+      setAmplitude(rmsFromAnalyser(analyserRef.current, dataRef.current));
       rafRef.current = requestAnimationFrame(poll);
     };
 
@@ -186,13 +204,21 @@ export function useAudioAmplitude() {
         cleanup();
         reject(new Error('Audio playback error'));
       };
-      // Start the analyser loop immediately; relying only on `onplay` can miss the first
-      // Human Mode entry after `await fetch` (Safari still plays audio but jaw stays flat).
-      poll();
-      audio.play().catch((e) => {
-        cleanup();
-        reject(e instanceof Error ? e : new Error(String(e)));
-      });
+      const startPlay = () => {
+        poll();
+        audio.play().catch((e) => {
+          cleanup();
+          reject(e instanceof Error ? e : new Error(String(e)));
+        });
+      };
+      if (ctx.state === 'suspended') {
+        void ctx.resume().then(startPlay).catch((e) => {
+          cleanup();
+          reject(e instanceof Error ? e : new Error(String(e)));
+        });
+      } else {
+        startPlay();
+      }
     });
   }, [stop]);
 
