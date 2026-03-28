@@ -95,6 +95,9 @@ export default function Home() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const greetingBlobRef = useRef<Blob | null>(null);
   const greetingFetchedRef = useRef(false);
+  /** Prevents overlapping manual greeting plays (e.g. pointerdown + touchstart). */
+  const greetingManualLockRef = useRef(false);
+  const [greetingAudioReady, setGreetingAudioReady] = useState(false);
   const recognitionRef = useRef<any>(null);
   const listenAnimRef = useRef(0);
   const listenStreamRef = useRef<MediaStream | null>(null);
@@ -131,8 +134,9 @@ export default function Home() {
   const handleModelLoaded = useCallback(() => setModelReady(true), []);
   const handleModelProgress = useCallback((pct: number) => setModelProgress(pct), []);
 
+  // Prefetch greeting TTS in parallel with the 3D model so audio is ready when the model appears.
   useEffect(() => {
-    if (!modelReady || greetingFetchedRef.current) return;
+    if (!mounted || greetingFetchedRef.current) return;
     greetingFetchedRef.current = true;
 
     fetch('/api/voice', {
@@ -144,34 +148,72 @@ export default function Home() {
       .then((blob) => {
         if (blob) {
           greetingBlobRef.current = blob;
-          setShowGreetingHint(true);
+          setGreetingAudioReady(true);
         }
       })
       .catch(() => {});
-  }, [modelReady]);
+  }, [mounted]);
+
+  // When both the model and greeting audio are ready, try autoplay (works on many desktops;
+  // phones block without a gesture — then we show the hint and use capture-phase listeners).
+  useEffect(() => {
+    if (!modelReady || !greetingAudioReady || greetingPlayed) return;
+    const blob = greetingBlobRef.current;
+    if (!blob) return;
+
+    let cancelled = false;
+
+    const run = async () => {
+      setIsTalking(true);
+      setShowGreetingHint(false);
+      try {
+        await playWithAmplitude(blob);
+        if (!cancelled) {
+          setGreetingPlayed(true);
+          setShowGreetingHint(false);
+        }
+      } catch {
+        if (!cancelled) setShowGreetingHint(true);
+      } finally {
+        if (!cancelled) setIsTalking(false);
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [modelReady, greetingAudioReady, greetingPlayed, playWithAmplitude]);
 
   useEffect(() => {
     if (!showGreetingHint || greetingPlayed) return;
 
     const playGreeting = async () => {
-      if (!greetingBlobRef.current || greetingPlayed) return;
-      setGreetingPlayed(true);
+      if (greetingManualLockRef.current || !greetingBlobRef.current) return;
+      greetingManualLockRef.current = true;
       setShowGreetingHint(false);
       setIsTalking(true);
       try {
         await playWithAmplitude(greetingBlobRef.current);
-      } catch {}
-      setIsTalking(false);
+        setGreetingPlayed(true);
+      } catch {
+        greetingManualLockRef.current = false;
+        setShowGreetingHint(true);
+      } finally {
+        setIsTalking(false);
+      }
     };
 
-    const handler = () => {
+    const onGesture = () => {
       void playGreeting();
     };
-    window.addEventListener('click', handler, { once: true });
-    window.addEventListener('touchstart', handler, { once: true });
+    // Capture phase: touches on the 3D canvas may not bubble to `window`.
+    const opts = { capture: true, passive: true } as const;
+    document.addEventListener('pointerdown', onGesture, opts);
+    document.addEventListener('touchstart', onGesture, opts);
     return () => {
-      window.removeEventListener('click', handler);
-      window.removeEventListener('touchstart', handler);
+      document.removeEventListener('pointerdown', onGesture, opts);
+      document.removeEventListener('touchstart', onGesture, opts);
     };
   }, [showGreetingHint, greetingPlayed, playWithAmplitude]);
 

@@ -33,7 +33,9 @@ export function useAudioAmplitude() {
       contextRef.current = new AudioContext();
     }
     const ctx = contextRef.current;
-    if (ctx.state === 'suspended') await ctx.resume();
+    // Do not await resume before play(): iOS/Safari tie unlocked playback to the user-gesture
+    // stack; awaiting here breaks greeting and other tap-to-play audio on phones.
+    if (ctx.state === 'suspended') void ctx.resume();
 
     // Analyser
     const analyser = ctx.createAnalyser();
