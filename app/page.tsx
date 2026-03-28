@@ -204,23 +204,14 @@ export default function Home() {
         greetingManualLockRef.current = false;
         setShowGreetingHint(true);
       };
-      // Safari/iOS: Web Audio play attempts consume the gesture token even when they fail,
-      // so the inline <audio> fallback never gets a valid gesture either.
-      // Go straight to inline audio on touch devices (reliable on Safari); desktop uses Web Audio
-      // for jaw sync (buffer → MediaElement → inline fallback).
-      const isTouchDevice =
-        window.matchMedia?.('(pointer: coarse)').matches ||
-        /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
-        (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
-
-      const playPromise = isTouchDevice
-        ? playBlobWithInlineAudio(blob)
-        : (() => {
-            const decoded = greetingDecodedRef.current;
-            return decoded != null
-              ? playBufferWithAmplitude(decoded).catch(() => playWithAmplitude(blob))
-              : playWithAmplitude(blob);
-          })();
+      // Same path on mobile + desktop: buffer → Web Audio analyser (lip sync) → MediaElement
+      // → only then plain inline <audio> in the catch (audio but no jaw).
+      // Touch used to skip straight to inline audio, which worked for sound but amplitude stayed 0.
+      const decoded = greetingDecodedRef.current;
+      const playPromise =
+        decoded != null
+          ? playBufferWithAmplitude(decoded).catch(() => playWithAmplitude(blob))
+          : playWithAmplitude(blob);
 
       void playPromise
         .then(() => {

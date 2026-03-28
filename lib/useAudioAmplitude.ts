@@ -55,6 +55,11 @@ export function useAudioAmplitude() {
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
+      try {
+        audioRef.current.remove();
+      } catch {
+        /* not in DOM */
+      }
     }
     audioRef.current = null;
     setAmplitude(0);
@@ -117,17 +122,20 @@ export function useAudioAmplitude() {
   );
 
   // Plays audio blob and pumps amplitude 0–1 each frame.
+  // Use a real in-DOM <audio> (like inline fallback) — iOS Safari is more reliable for
+  // createMediaElementSource + play() than `new Audio(url)` alone.
   const playWithAmplitude = useCallback(async (blob: Blob): Promise<void> => {
     stop();
 
     const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    try {
-      (audio as HTMLAudioElement & { playsInline?: boolean }).playsInline = true;
-    } catch {
-      /* */
-    }
-    audio.setAttribute('playsinline', '');
+    const audio = document.createElement('audio');
+    audio.setAttribute('playsinline', 'true');
+    audio.setAttribute('webkit-playsinline', 'true');
+    audio.preload = 'auto';
+    audio.volume = 1;
+    audio.src = url;
+    audio.style.cssText = 'position:fixed;left:-9999px;width:1px;height:1px;opacity:0';
+    document.body.appendChild(audio);
     audioRef.current = audio;
 
     const Ctor =
@@ -162,6 +170,12 @@ export function useAudioAmplitude() {
         cancelAnimationFrame(rafRef.current);
         setAmplitude(0);
         URL.revokeObjectURL(url);
+        try {
+          audio.pause();
+        } catch {
+          /* */
+        }
+        audio.remove();
         audioRef.current = null;
       };
       audio.onended = () => {
