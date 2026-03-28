@@ -200,22 +200,31 @@ export default function Home() {
         greetingManualLockRef.current = false;
         setShowGreetingHint(true);
       };
-      // Buffer path first avoids Chrome quirks with MediaElementSource + suspended AudioContext.
-      // Call the first play* synchronously from the pointer/touch handler (no async wrapper).
-      const decoded = greetingDecodedRef.current;
-      const primary =
-        decoded != null
-          ? playBufferWithAmplitude(decoded).catch(() => playWithAmplitude(blob))
-          : playWithAmplitude(blob);
-      void primary
+      // Safari/iOS: Web Audio play attempts consume the gesture token even when they fail,
+      // so the inline <audio> fallback never gets a valid gesture either.
+      // Go straight to inline audio on touch devices (reliable on Safari); desktop uses Web Audio
+      // for jaw sync (buffer → MediaElement → inline fallback).
+      const isTouchDevice =
+        window.matchMedia?.('(pointer: coarse)').matches ||
+        /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+        (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+
+      const playPromise = isTouchDevice
+        ? playBlobWithInlineAudio(blob)
+        : (() => {
+            const decoded = greetingDecodedRef.current;
+            return decoded != null
+              ? playBufferWithAmplitude(decoded).catch(() => playWithAmplitude(blob))
+              : playWithAmplitude(blob);
+          })();
+
+      void playPromise
         .then(() => {
           setGreetingPlayed(true);
         })
         .catch(() =>
           playBlobWithInlineAudio(blob)
-            .then(() => {
-              setGreetingPlayed(true);
-            })
+            .then(() => setGreetingPlayed(true))
             .catch(finishFail),
         )
         .finally(() => {
