@@ -56,24 +56,26 @@ export function useAudioAmplitude() {
       rafRef.current = requestAnimationFrame(poll);
     };
 
-    // Return a promise that resolves when audio finishes
-    return new Promise<void>((resolve) => {
-      audio.onplay = () => poll();
-      audio.onended = () => {
+    // Resolves when playback ends; rejects if autoplay / decode is blocked (so callers can fall back).
+    return new Promise<void>((resolve, reject) => {
+      const cleanup = () => {
         cancelAnimationFrame(rafRef.current);
         setAmplitude(0);
         URL.revokeObjectURL(url);
+        audioRef.current = null;
+      };
+      audio.onplay = () => poll();
+      audio.onended = () => {
+        cleanup();
         resolve();
       };
       audio.onerror = () => {
-        cancelAnimationFrame(rafRef.current);
-        setAmplitude(0);
-        URL.revokeObjectURL(url);
-        resolve();
+        cleanup();
+        reject(new Error('Audio playback error'));
       };
-      audio.play().catch(() => {
-        URL.revokeObjectURL(url);
-        resolve();
+      audio.play().catch((e) => {
+        cleanup();
+        reject(e instanceof Error ? e : new Error(String(e)));
       });
     });
   }, [stop]);

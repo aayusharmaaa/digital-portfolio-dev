@@ -51,7 +51,7 @@ const CURRENTLY: {
   { icon: '►', label: 'seeking', value: 'summer 2026 internships' },
 ];
 
-const GREETING = "Hey, what's up! I'm Aayush. Feel free to ask me anything — about my projects, experience, or whatever's on your mind.";
+const GREETING = "Hey — I'm Aayush. Ask me anything.";
 const HUMAN_GREETING = "Hey! Have a conversation with me. Just speak and I'll respond.";
 
 type Message = { id?: string; role: 'user' | 'assistant'; content: string };
@@ -133,8 +133,8 @@ export default function Home() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: GREETING }),
     })
-      .then(res => res.ok ? res.blob() : null)
-      .then(blob => {
+      .then((res) => (res.ok ? res.blob() : null))
+      .then((blob) => {
         if (blob) {
           greetingBlobRef.current = blob;
           setShowGreetingHint(true);
@@ -157,7 +157,9 @@ export default function Home() {
       setIsTalking(false);
     };
 
-    const handler = () => { playGreeting(); };
+    const handler = () => {
+      void playGreeting();
+    };
     window.addEventListener('click', handler, { once: true });
     window.addEventListener('touchstart', handler, { once: true });
     return () => {
