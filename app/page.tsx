@@ -9,6 +9,7 @@ import CustomCursor from '@/components/CustomCursor';
 import VoiceVisualizer from '@/components/VoiceVisualizer';
 import { useAudioAmplitude, decodeAudioBlob } from '@/lib/useAudioAmplitude';
 import { measurePlaybackDurationMs, runRevealWithDuration } from '@/lib/voiceReveal';
+import { playBlobWithInlineAudio } from '@/lib/playInlineAudio';
 import { useSoundEffects } from '@/lib/useSoundEffects';
 
 const AsciiModelAvatar = dynamic(() => import('@/components/AsciiModelAvatar'), { ssr: false });
@@ -205,17 +206,19 @@ export default function Home() {
   useEffect(() => {
     if (!showGreetingHint || greetingPlayed) return;
 
-    /** Sync body (no await before play) keeps iOS user-activation for Web Audio buffer playback. */
+    /**
+     * Greeting audio is already fetched — play with an in-DOM <audio playsinline>.
+     * iOS Safari often stays silent with Web Audio from a tap; touchend matches media unlock better than touchstart+pointerdown firing twice.
+     */
     const playGreetingFromGesture = () => {
       if (greetingManualLockRef.current) return;
-      const decoded = greetingDecodedRef.current;
       const blob = greetingBlobRef.current;
-      if (!decoded && !blob) return;
+      if (!blob) return;
       greetingManualLockRef.current = true;
       setShowGreetingHint(false);
       setIsTalking(true);
-      const play = decoded ? playBufferWithAmplitude(decoded) : playWithAmplitude(blob!);
-      void play
+      stop();
+      void playBlobWithInlineAudio(blob)
         .then(() => {
           setGreetingPlayed(true);
         })
@@ -228,19 +231,49 @@ export default function Home() {
         });
     };
 
-    // Capture phase: touches on the 3D canvas may not bubble to `window`.
     const opts = { capture: true, passive: true } as const;
+    const coarse =
+      typeof window !== 'undefined' &&
+      (window.matchMedia?.('(pointer: coarse)').matches ||
+        /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+        (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1));
+
     const onPointerDown = (e: PointerEvent) => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       playGreetingFromGesture();
     };
-    document.addEventListener('pointerdown', onPointerDown, opts);
-    document.addEventListener('touchstart', playGreetingFromGesture, opts);
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown, opts);
-      document.removeEventListener('touchstart', playGreetingFromGesture, opts);
+
+    /** Avoid firing after scroll drags (touchend alone would misfire). */
+    const tapStart = { x: 0, y: 0 };
+    const onTouchStart = (e: TouchEvent) => {
+      const t = e.changedTouches[0];
+      if (t) {
+        tapStart.x = t.clientX;
+        tapStart.y = t.clientY;
+      }
     };
-  }, [showGreetingHint, greetingPlayed, playWithAmplitude, playBufferWithAmplitude]);
+    const onTouchEnd = (e: TouchEvent) => {
+      const t = e.changedTouches[0];
+      if (!t) return;
+      const dx = t.clientX - tapStart.x;
+      const dy = t.clientY - tapStart.y;
+      if (dx * dx + dy * dy > 400) return;
+      playGreetingFromGesture();
+    };
+
+    if (coarse) {
+      document.addEventListener('touchstart', onTouchStart, opts);
+      document.addEventListener('touchend', onTouchEnd, opts);
+    } else {
+      document.addEventListener('pointerdown', onPointerDown, opts);
+    }
+
+    return () => {
+      document.removeEventListener('touchstart', onTouchStart, opts);
+      document.removeEventListener('touchend', onTouchEnd, opts);
+      document.removeEventListener('pointerdown', onPointerDown, opts);
+    };
+  }, [showGreetingHint, greetingPlayed, stop]);
 
   const ask = async (text: string) => {
     if (!text.trim() || loading) return;
