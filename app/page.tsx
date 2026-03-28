@@ -472,9 +472,9 @@ export default function Home() {
 
   const stopListening = useCallback(() => {
     recognitionRef.current?.stop();
+    recognitionRef.current = null;
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
-      return;
     }
     setIsListening(false);
     stopListenAmplitude();
@@ -904,7 +904,10 @@ export default function Home() {
                   }
                   setTimeout(() => startListening(true), 500);
                 } else {
+                  stop();
                   stopListening();
+                  setIsTalking(false);
+                  setIsListening(false);
                 }
               }}
               className={`w-10 h-5 border rounded-full relative transition-colors duration-200 ${
