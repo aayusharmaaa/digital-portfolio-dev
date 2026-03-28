@@ -31,8 +31,8 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         text,
-        // Matches the ElevenLabs voice panel screenshot (Eleven Multilingual v2).
-        model_id: 'eleven_multilingual_v2',
+        // Eleven Flash v2.5 — https://elevenlabs.io/docs/models
+        model_id: 'eleven_flash_v2_5',
         voice_settings: {
           // Slower speech for clarity (panel shows Speed biased toward "Slower").
           speed: 1,
