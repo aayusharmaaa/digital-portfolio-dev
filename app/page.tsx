@@ -194,11 +194,13 @@ export default function Home() {
     const decoded = greetingDecodedRef.current;
 
     const run = async () => {
+      unlockAudioFromUI();
       setIsTalking(true);
       setShowGreetingHint(false);
       try {
-        if (decoded) await playBufferWithAmplitude(decoded);
-        else await playWithAmplitude(blob);
+        await (decoded
+          ? playBufferWithAmplitude(decoded).catch(() => playWithAmplitude(blob))
+          : playWithAmplitude(blob));
         if (!cancelled) {
           setGreetingPlayed(true);
           setShowGreetingHint(false);
@@ -215,7 +217,14 @@ export default function Home() {
       cancelled = true;
       setIsTalking(false);
     };
-  }, [modelReady, greetingAudioReady, greetingPlayed, playWithAmplitude, playBufferWithAmplitude]);
+  }, [
+    modelReady,
+    greetingAudioReady,
+    greetingPlayed,
+    playWithAmplitude,
+    playBufferWithAmplitude,
+    unlockAudioFromUI,
+  ]);
 
   useEffect(() => {
     if (!showGreetingHint || greetingPlayed) return;
@@ -237,9 +246,14 @@ export default function Home() {
         greetingManualLockRef.current = false;
         setShowGreetingHint(true);
       };
-      // Must call playWithAmplitude in the same sync stack as the touch/pointer event — an async
-      // IIFE defers to a microtask and iOS will not start audio (or Web Audio stays silent).
-      void playWithAmplitude(blob)
+      // Buffer path first avoids Chrome quirks with MediaElementSource + suspended AudioContext.
+      // Call the first play* synchronously from the pointer/touch handler (no async wrapper).
+      const decoded = greetingDecodedRef.current;
+      const primary =
+        decoded != null
+          ? playBufferWithAmplitude(decoded).catch(() => playWithAmplitude(blob))
+          : playWithAmplitude(blob);
+      void primary
         .then(() => {
           setGreetingPlayed(true);
         })
@@ -281,23 +295,30 @@ export default function Home() {
       if (!t) return;
       const dx = t.clientX - tapStart.x;
       const dy = t.clientY - tapStart.y;
-      if (dx * dx + dy * dy > 400) return;
+      // Slightly looser slop — Chrome/Android sometimes reports non-zero drift on taps.
+      if (dx * dx + dy * dy > 900) return;
       playGreetingFromGesture();
     };
 
+    document.addEventListener('pointerdown', onPointerDown, opts);
     if (coarse) {
       document.addEventListener('touchstart', onTouchStart, opts);
       document.addEventListener('touchend', onTouchEnd, opts);
-    } else {
-      document.addEventListener('pointerdown', onPointerDown, opts);
     }
 
     return () => {
+      document.removeEventListener('pointerdown', onPointerDown, opts);
       document.removeEventListener('touchstart', onTouchStart, opts);
       document.removeEventListener('touchend', onTouchEnd, opts);
-      document.removeEventListener('pointerdown', onPointerDown, opts);
     };
-  }, [showGreetingHint, greetingPlayed, stop, playWithAmplitude, unlockAudioFromUI]);
+  }, [
+    showGreetingHint,
+    greetingPlayed,
+    stop,
+    playWithAmplitude,
+    playBufferWithAmplitude,
+    unlockAudioFromUI,
+  ]);
 
   const ask = async (text: string) => {
     if (!text.trim() || loading) return;

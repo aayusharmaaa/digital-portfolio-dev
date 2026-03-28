@@ -122,6 +122,12 @@ export function useAudioAmplitude() {
 
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
+    try {
+      (audio as HTMLAudioElement & { playsInline?: boolean }).playsInline = true;
+    } catch {
+      /* */
+    }
+    audio.setAttribute('playsinline', '');
     audioRef.current = audio;
 
     const Ctor =
