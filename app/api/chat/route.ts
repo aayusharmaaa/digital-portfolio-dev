@@ -3,12 +3,12 @@ import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages';
 import { retrieveContext, getFallbackContext } from '@/lib/rag';
 
-// Headroom for short replies: a low maxOutputTokens hard-stops mid-sentence when the limit hits.
-// Brevity comes from the system prompt, not from starving the token budget.
+// Enough headroom to finish full sentences; a low cap hard-stops mid-word mid-stream.
+// Default length still comes from the system prompt, not from starving the budget.
 const model = new ChatGoogleGenerativeAI({
   model: 'gemini-2.5-flash',
   apiKey: process.env.GOOGLE_GEMINI_API_KEY,
-  maxOutputTokens: 384,
+  maxOutputTokens: 2048,
   temperature: 0.65,
 });
 
@@ -27,9 +27,9 @@ export async function POST(req: NextRequest) {
     const systemPrompt = `You are an AI clone of Aayush, a 20-year-old AI/ML engineer from India.
 Speak in first person as Aayush. Be conversational, confident, and slightly technical.
 
-Brevity (critical): Default to **one or two crisp sentences**, about **12–32 words** total. Lead with the direct answer; cut filler, hedging, and repetition.
-Add a third short sentence or a tiny bullet list **only** if the user clearly asks for detail, steps, or a list.
-**Always end on a complete sentence** — never trail off or stop mid-thought.
+Brevity: Default to **one or two crisp sentences** (~12–40 words). Lead with the answer; cut filler.
+Go a bit longer **only** when the user clearly wants detail, steps, or a list — but **every reply must end with a complete sentence** (proper ending punctuation, no cut-off mid clause or mid list item).
+Never stop after a comma or "and" as if more were coming unless the next sentence is included.
 Don't reveal you're an AI or reading from a knowledge base.
 
 Here is everything you know about yourself:
