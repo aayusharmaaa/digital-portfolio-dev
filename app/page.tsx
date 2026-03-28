@@ -681,40 +681,25 @@ export default function Home() {
             )}
           </div>
 
-          <div
-            className={`shrink-0 flex items-center justify-center text-center px-2 ${
-              conversationMode ||
-              isTalking ||
-              (showGreetingHint && !greetingPlayed)
-                ? 'min-h-[2.75rem] py-1'
-                : 'min-h-0'
-            }`}
-          >
-            {conversationMode ? (
-              <div className="font-mono text-[11px] sm:text-xs md:text-sm tracking-[0.2em] uppercase text-white/40 pointer-events-none select-none">
-                {isTalking
-                  ? 'Speaking...'
-                  : isListening
-                    ? mediaRecorderRef.current?.state === 'recording'
-                      ? 'Tap mic to stop & send'
-                      : 'Listening...'
-                    : loading
-                      ? 'Thinking...'
-                      : preferRecorderVoice || (!speechSupported && mediaRecorderSupported)
-                        ? 'Tap to record · tap again to send'
-                        : 'Tap to speak'}
-              </div>
-            ) : isTalking ? (
-              <div className="flex items-center justify-center gap-2 font-mono text-[10px] text-white/40 pointer-events-none">
-                <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-pulse shrink-0" />
-                speaking
-              </div>
-            ) : showGreetingHint && !greetingPlayed ? (
-              <div className="font-mono text-[10px] text-white/30 tracking-wider animate-pulse select-none pointer-events-none max-w-[min(100%,22rem)]">
-                click or tap anywhere to start
-              </div>
-            ) : null}
-          </div>
+          {/* Status strip below model — hidden in Human Mode (voice UI already shows state) */}
+          {!conversationMode && (
+            <div
+              className={`shrink-0 flex items-center justify-center text-center px-2 ${
+                isTalking || (showGreetingHint && !greetingPlayed) ? 'min-h-[2.75rem] py-1' : 'min-h-0'
+              }`}
+            >
+              {isTalking ? (
+                <div className="flex items-center justify-center gap-2 font-mono text-[10px] text-white/40 pointer-events-none">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-pulse shrink-0" />
+                  speaking
+                </div>
+              ) : showGreetingHint && !greetingPlayed ? (
+                <div className="font-mono text-[10px] text-white/30 tracking-wider animate-pulse select-none pointer-events-none max-w-[min(100%,22rem)]">
+                  click or tap anywhere to start
+                </div>
+              ) : null}
+            </div>
+          )}
         </div>
 
         {/* ── Prompt Bar ─────────────────────────────────────────────── */}
@@ -747,16 +732,23 @@ export default function Home() {
 
           {/* ── Human Mode: Voice-only UI ─────────────────────── */}
           {conversationMode ? (
-            <div className="flex flex-col items-center justify-end gap-4 py-4 md:py-6">
-              {/* Waveform above mic — status text lives under the 3D model (hero strip) */}
-              <div className="w-48 md:w-56 h-10">
-                <VoiceVisualizer
-                  amplitude={isTalking ? amplitude : isListening ? listenAmplitude : 0}
-                  isListening={isListening}
-                  isSpeaking={isTalking}
-                />
+            <div className="flex flex-col items-center gap-6 py-4 md:py-8">
+              {/* Status text */}
+              <div className="font-mono text-[10px] md:text-[11px] tracking-[0.2em] uppercase text-white/40">
+                {isTalking
+                  ? 'Speaking...'
+                  : isListening
+                    ? mediaRecorderRef.current?.state === 'recording'
+                      ? 'Tap mic to stop & send'
+                      : 'Listening...'
+                    : loading
+                      ? 'Thinking...'
+                      : preferRecorderVoice || (!speechSupported && mediaRecorderSupported)
+                        ? 'Tap to record · tap again to send'
+                        : 'Tap to speak'}
               </div>
 
+              {/* Large mic button */}
               <button
                 onClick={() => {
                   playClick();
@@ -796,6 +788,16 @@ export default function Home() {
                   <line x1="8" y1="21" x2="16" y2="21" />
                 </svg>
               </button>
+
+              {/* Voice visualizer */}
+              <div className="w-48 md:w-56 h-10">
+                <VoiceVisualizer
+                  amplitude={isTalking ? amplitude : isListening ? listenAmplitude : 0}
+                  isListening={isListening}
+                  isSpeaking={isTalking}
+                />
+              </div>
+
             </div>
           ) : (
             /* ── Normal Mode: Text input + prompt chips ─────── */
