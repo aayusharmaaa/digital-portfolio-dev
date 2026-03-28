@@ -62,14 +62,18 @@ type Message = { id?: string; role: 'user' | 'assistant'; content: string };
 export default function Home() {
   const [promptIdx, setPromptIdx] = useState(0);
   const [conversationMode, setConversationMode] = useState(false);
+  const conversationModeRef = useRef(false);
   const [chatHistory, setChatHistory] = useState<Message[]>([]);
   const chatHistoryRef = useRef<Message[]>([]);
   const { playHover, playClick, playToggleOn, playToggleOff, playType } = useSoundEffects();
 
-  // Keep ref in sync
+  // Keep refs in sync
   useEffect(() => {
     chatHistoryRef.current = chatHistory;
   }, [chatHistory]);
+  useEffect(() => {
+    conversationModeRef.current = conversationMode;
+  }, [conversationMode]);
 
   const [loading, setLoading] = useState(false);
   const [shouldShake, setShouldShake] = useState(false);
@@ -352,6 +356,7 @@ export default function Home() {
 
   // Voice-only ask for Human Mode: sends text, speaks the reply, then auto-listens again
   const askVoice = async (text: string) => {
+    if (!conversationModeRef.current) return;
     if (!text.trim() || loading) return;
     const userMsg = { id: crypto.randomUUID(), role: 'user' as const, content: text };
     
@@ -426,6 +431,7 @@ export default function Home() {
 
   // ── Speech-to-Text via Web Speech API ──────────────────
   const startListening = useCallback(async (fromAuto = false) => {
+    if (!conversationModeRef.current) return;
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       setSpeechSupported(false);
@@ -440,6 +446,7 @@ export default function Home() {
     recognition.maxAlternatives = 1;
 
     recognition.onresult = (event: any) => {
+      if (!conversationModeRef.current) return;
       const transcript = event.results[0][0].transcript;
       if (transcript.trim()) {
         askVoice(transcript);
@@ -519,6 +526,7 @@ export default function Home() {
 
   /** Browsers without Web Speech API (and iOS): record a clip, transcribe via /api/transcribe */
   const startFallbackRecording = async () => {
+    if (!conversationModeRef.current) return;
     try {
       if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
         const typed = window.prompt('Voice capture is not available here. Type your message:');
