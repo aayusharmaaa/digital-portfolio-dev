@@ -7,7 +7,7 @@ import ExperienceTimeline from '@/components/ExperienceTimeline';
 import AchievementsMarquee from '@/components/AchievementsMarquee';
 import CustomCursor from '@/components/CustomCursor';
 import VoiceVisualizer from '@/components/VoiceVisualizer';
-import { useAudioAmplitude } from '@/lib/useAudioAmplitude';
+import { useAudioAmplitude, decodeAudioBlob } from '@/lib/useAudioAmplitude';
 import { useSoundEffects } from '@/lib/useSoundEffects';
 
 const AsciiModelAvatar = dynamic(() => import('@/components/AsciiModelAvatar'), { ssr: false });
@@ -51,7 +51,7 @@ const CURRENTLY: {
   { icon: '►', label: 'seeking', value: 'summer 2026 internships' },
 ];
 
-const GREETING = "Hey — I'm Aayush. Ask me anything.";
+const GREETING = "Hey, what's up! I'm Aayush. Feel free to ask me anything — about my projects, experience, or whatever's on your mind.";
 const HUMAN_GREETING = "Hey! Have a conversation with me. Just speak and I'll respond.";
 
 type Message = { id?: string; role: 'user' | 'assistant'; content: string };
@@ -94,6 +94,7 @@ export default function Home() {
   const heroRef = useRef<HTMLElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const greetingBlobRef = useRef<Blob | null>(null);
+  const greetingDecodedRef = useRef<AudioBuffer | null>(null);
   const greetingFetchedRef = useRef(false);
   /** Prevents overlapping manual greeting plays (e.g. pointerdown + touchstart). */
   const greetingManualLockRef = useRef(false);
@@ -105,7 +106,7 @@ export default function Home() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaChunksRef = useRef<Blob[]>([]);
 
-  const { amplitude, playWithAmplitude, stop } = useAudioAmplitude();
+  const { amplitude, playWithAmplitude, playBufferWithAmplitude, stop } = useAudioAmplitude();
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => {
@@ -145,11 +146,11 @@ export default function Home() {
       body: JSON.stringify({ text: GREETING }),
     })
       .then((res) => (res.ok ? res.blob() : null))
-      .then((blob) => {
-        if (blob) {
-          greetingBlobRef.current = blob;
-          setGreetingAudioReady(true);
-        }
+      .then(async (blob) => {
+        if (!blob) return;
+        greetingBlobRef.current = blob;
+        greetingDecodedRef.current = await decodeAudioBlob(blob);
+        setGreetingAudioReady(true);
       })
       .catch(() => {});
   }, [mounted]);
@@ -163,11 +164,14 @@ export default function Home() {
 
     let cancelled = false;
 
+    const decoded = greetingDecodedRef.current;
+
     const run = async () => {
       setIsTalking(true);
       setShowGreetingHint(false);
       try {
-        await playWithAmplitude(blob);
+        if (decoded) await playBufferWithAmplitude(decoded);
+        else await playWithAmplitude(blob);
         if (!cancelled) {
           setGreetingPlayed(true);
           setShowGreetingHint(false);
@@ -183,39 +187,47 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [modelReady, greetingAudioReady, greetingPlayed, playWithAmplitude]);
+  }, [modelReady, greetingAudioReady, greetingPlayed, playWithAmplitude, playBufferWithAmplitude]);
 
   useEffect(() => {
     if (!showGreetingHint || greetingPlayed) return;
 
-    const playGreeting = async () => {
-      if (greetingManualLockRef.current || !greetingBlobRef.current) return;
+    /** Sync body (no await before play) keeps iOS user-activation for Web Audio buffer playback. */
+    const playGreetingFromGesture = () => {
+      if (greetingManualLockRef.current) return;
+      const decoded = greetingDecodedRef.current;
+      const blob = greetingBlobRef.current;
+      if (!decoded && !blob) return;
       greetingManualLockRef.current = true;
       setShowGreetingHint(false);
       setIsTalking(true);
-      try {
-        await playWithAmplitude(greetingBlobRef.current);
-        setGreetingPlayed(true);
-      } catch {
-        greetingManualLockRef.current = false;
-        setShowGreetingHint(true);
-      } finally {
-        setIsTalking(false);
-      }
+      const play = decoded ? playBufferWithAmplitude(decoded) : playWithAmplitude(blob!);
+      void play
+        .then(() => {
+          setGreetingPlayed(true);
+        })
+        .catch(() => {
+          greetingManualLockRef.current = false;
+          setShowGreetingHint(true);
+        })
+        .finally(() => {
+          setIsTalking(false);
+        });
     };
 
-    const onGesture = () => {
-      void playGreeting();
-    };
     // Capture phase: touches on the 3D canvas may not bubble to `window`.
     const opts = { capture: true, passive: true } as const;
-    document.addEventListener('pointerdown', onGesture, opts);
-    document.addEventListener('touchstart', onGesture, opts);
-    return () => {
-      document.removeEventListener('pointerdown', onGesture, opts);
-      document.removeEventListener('touchstart', onGesture, opts);
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      playGreetingFromGesture();
     };
-  }, [showGreetingHint, greetingPlayed, playWithAmplitude]);
+    document.addEventListener('pointerdown', onPointerDown, opts);
+    document.addEventListener('touchstart', playGreetingFromGesture, opts);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown, opts);
+      document.removeEventListener('touchstart', playGreetingFromGesture, opts);
+    };
+  }, [showGreetingHint, greetingPlayed, playWithAmplitude, playBufferWithAmplitude]);
 
   const ask = async (text: string) => {
     if (!text.trim() || loading) return;
@@ -624,10 +636,10 @@ export default function Home() {
                 onProgress={handleModelProgress}
               />
 
-              {/* Interaction hint */}
+              {/* Interaction hint — hidden while TTS plays so it does not clash with the status row */}
               <div
-                className="absolute -bottom-7 md:-bottom-6 left-1/2 -translate-x-1/2 font-mono text-[8px] sm:text-[9px] md:text-[10px] text-white/15 tracking-wider select-none pointer-events-none transition-opacity duration-700 delay-500 whitespace-nowrap"
-                style={{ opacity: modelReady ? 1 : 0 }}
+                className="absolute -bottom-8 md:-bottom-7 left-1/2 -translate-x-1/2 font-mono text-[8px] sm:text-[9px] md:text-[10px] text-white/15 tracking-wider select-none pointer-events-none transition-opacity duration-700 delay-500 whitespace-nowrap"
+                style={{ opacity: modelReady && !isTalking ? 1 : 0 }}
               >
                 drag to rotate · scroll to zoom
               </div>
@@ -661,17 +673,17 @@ export default function Home() {
             </div>
           )}
 
-          {/* Greeting hint */}
+          {/* Greeting hint — sits above the model hint row so it does not overlap “drag to rotate” */}
           {showGreetingHint && !greetingPlayed && (
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 font-mono text-[10px] text-white/30 tracking-wider animate-pulse select-none">
-              click anywhere to start
+            <div className="absolute bottom-[4.25rem] sm:bottom-16 md:bottom-14 left-1/2 -translate-x-1/2 font-mono text-[10px] text-white/30 tracking-wider animate-pulse select-none pointer-events-none text-center max-w-[min(100%,20rem)] px-2">
+              tap anywhere to start
             </div>
           )}
 
           {/* Talking indicator */}
           {isTalking && (
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 font-mono text-[10px] text-white/40">
-              <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-pulse" />
+            <div className="absolute bottom-[4.25rem] sm:bottom-16 md:bottom-14 left-1/2 -translate-x-1/2 flex items-center justify-center gap-2 font-mono text-[10px] text-white/40 pointer-events-none">
+              <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-pulse shrink-0" />
               speaking
             </div>
           )}
