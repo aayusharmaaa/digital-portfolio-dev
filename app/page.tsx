@@ -72,6 +72,7 @@ export default function Home() {
   }, [chatHistory]);
 
   const [loading, setLoading] = useState(false);
+  const [shouldShake, setShouldShake] = useState(false);
   const [input, setInput] = useState('');
   const [mounted, setMounted] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
@@ -171,60 +172,13 @@ export default function Home() {
     });
   }, [mounted]);
 
-  // When both the model and greeting audio are ready: desktop may autoplay; touch devices need a tap
-  // (autoplay fails and used to leave "speaking" stuck when Strict Mode aborted the effect mid-flight).
+  // Always use an explicit click/tap — desktop autoplay is blocked or silent on Chrome/Edge/Firefox
+  // without a gesture, and "successful" autoplay sometimes produced no audible output.
   useEffect(() => {
     if (!modelReady || !greetingAudioReady || greetingPlayed) return;
-    const blob = greetingBlobRef.current;
-    if (!blob) return;
-
-    const touchFirst =
-      typeof window !== 'undefined' &&
-      (window.matchMedia?.('(pointer: coarse)').matches ||
-        /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
-        (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1));
-
-    if (touchFirst) {
-      setShowGreetingHint(true);
-      return;
-    }
-
-    let cancelled = false;
-
-    const decoded = greetingDecodedRef.current;
-
-    const run = async () => {
-      unlockAudioFromUI();
-      setIsTalking(true);
-      setShowGreetingHint(false);
-      try {
-        await (decoded
-          ? playBufferWithAmplitude(decoded).catch(() => playWithAmplitude(blob))
-          : playWithAmplitude(blob));
-        if (!cancelled) {
-          setGreetingPlayed(true);
-          setShowGreetingHint(false);
-        }
-      } catch {
-        if (!cancelled) setShowGreetingHint(true);
-      } finally {
-        if (!cancelled) setIsTalking(false);
-      }
-    };
-
-    void run();
-    return () => {
-      cancelled = true;
-      setIsTalking(false);
-    };
-  }, [
-    modelReady,
-    greetingAudioReady,
-    greetingPlayed,
-    playWithAmplitude,
-    playBufferWithAmplitude,
-    unlockAudioFromUI,
-  ]);
+    if (!greetingBlobRef.current) return;
+    setShowGreetingHint(true);
+  }, [modelReady, greetingAudioReady, greetingPlayed]);
 
   useEffect(() => {
     if (!showGreetingHint || greetingPlayed) return;
@@ -281,6 +235,11 @@ export default function Home() {
       playGreetingFromGesture();
     };
 
+    const onClickCapture = (e: MouseEvent) => {
+      if (e.button !== 0) return;
+      playGreetingFromGesture();
+    };
+
     /** Avoid firing after scroll drags (touchend alone would misfire). */
     const tapStart = { x: 0, y: 0 };
     const onTouchStart = (e: TouchEvent) => {
@@ -300,16 +259,18 @@ export default function Home() {
       playGreetingFromGesture();
     };
 
-    document.addEventListener('pointerdown', onPointerDown, opts);
+    window.addEventListener('pointerdown', onPointerDown, opts);
+    window.addEventListener('click', onClickCapture, opts);
     if (coarse) {
-      document.addEventListener('touchstart', onTouchStart, opts);
-      document.addEventListener('touchend', onTouchEnd, opts);
+      window.addEventListener('touchstart', onTouchStart, opts);
+      window.addEventListener('touchend', onTouchEnd, opts);
     }
 
     return () => {
-      document.removeEventListener('pointerdown', onPointerDown, opts);
-      document.removeEventListener('touchstart', onTouchStart, opts);
-      document.removeEventListener('touchend', onTouchEnd, opts);
+      window.removeEventListener('pointerdown', onPointerDown, opts);
+      window.removeEventListener('click', onClickCapture, opts);
+      window.removeEventListener('touchstart', onTouchStart, opts);
+      window.removeEventListener('touchend', onTouchEnd, opts);
     };
   }, [
     showGreetingHint,
@@ -321,7 +282,12 @@ export default function Home() {
   ]);
 
   const ask = async (text: string) => {
-    if (!text.trim() || loading) return;
+    if (!text.trim()) return;
+    if (loading) {
+      setShouldShake(true);
+      setTimeout(() => setShouldShake(false), 500);
+      return;
+    }
     const userMsg = { id: crypto.randomUUID(), role: 'user' as const, content: text };
     const updated = [...chatHistory, userMsg];
     setChatHistory(updated);
@@ -727,7 +693,7 @@ export default function Home() {
               </div>
             ) : showGreetingHint && !greetingPlayed ? (
               <div className="font-mono text-[10px] text-white/30 tracking-wider animate-pulse select-none pointer-events-none max-w-[min(100%,22rem)]">
-                tap anywhere to start
+                click or tap anywhere to start
               </div>
             ) : null}
           </div>
@@ -833,7 +799,7 @@ export default function Home() {
           ) : (
             /* ── Normal Mode: Text input + prompt chips ─────── */
             <>
-              <div className="border border-white/10 bg-black/30 rounded-sm">
+              <div className={`border border-white/10 bg-black/40 backdrop-blur-md rounded-sm overflow-hidden transition-all duration-300 ${shouldShake ? 'animate-shake border-red-500/50' : ''}`}>
                 <div className="flex items-center gap-2 px-2.5 sm:px-3 md:px-4 py-2.5 border-b border-white/5 overflow-x-auto">
                   <span className="text-white/20 text-sm shrink-0">⌘</span>
                   {PROMPTS.map((p, i) => (
@@ -863,8 +829,13 @@ export default function Home() {
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={e => {
                       if (e.key === 'Enter') {
-                        playClick();
-                        ask(input);
+                        if (input.trim()) {
+                          playClick();
+                          ask(input);
+                        } else {
+                          setShouldShake(true);
+                          setTimeout(() => setShouldShake(false), 500);
+                        }
                       } else {
                         playType();
                       }
@@ -873,7 +844,7 @@ export default function Home() {
                     className="flex-1 bg-transparent text-sm text-white/85 outline-none placeholder:text-white/20 font-mono"
                   />
                   <button
-                    onClick={() => { playClick(); ask(input); }}
+                    onClick={() => { if (input.trim()) playClick(); ask(input); }}
                     disabled={loading || !input.trim()}
                     className="text-white/25 hover:text-white/70 transition-colors disabled:opacity-10"
                   >
