@@ -81,6 +81,8 @@ export default function Home() {
   const [isListening, setIsListening] = useState(false);
   const [listenAmplitude, setListenAmplitude] = useState(0);
   const [speechSupported, setSpeechSupported] = useState(true);
+  /** iOS / many mobile browsers lack Web Speech API — use MediaRecorder + /api/transcribe instead */
+  const [mediaRecorderSupported, setMediaRecorderSupported] = useState(false);
 
   // Handle Light Mode
   useEffect(() => {
@@ -95,6 +97,8 @@ export default function Home() {
   const listenAnimRef = useRef(0);
   const listenStreamRef = useRef<MediaStream | null>(null);
   const revealAnimRef = useRef(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaChunksRef = useRef<Blob[]>([]);
 
   const { amplitude, playWithAmplitude, stop } = useAudioAmplitude();
 
@@ -106,6 +110,7 @@ export default function Home() {
     const supported = typeof window !== 'undefined' &&
       Boolean((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
     setSpeechSupported(supported);
+    setMediaRecorderSupported(typeof window !== 'undefined' && typeof MediaRecorder !== 'undefined');
   }, []);
 
   useEffect(() => {
@@ -343,7 +348,7 @@ export default function Home() {
   };
 
   // ── Speech-to-Text via Web Speech API ──────────────────
-  const startListening = useCallback((fromAuto = false) => {
+  const startListening = useCallback(async (fromAuto = false) => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       setSpeechSupported(false);
@@ -373,6 +378,11 @@ export default function Home() {
 
     recognitionRef.current = recognition;
     try {
+      // On phones, explicitly requesting mic permission during tap improves reliability.
+      if (!fromAuto && navigator.mediaDevices?.getUserMedia) {
+        const preflight = await navigator.mediaDevices.getUserMedia({ audio: true });
+        preflight.getTracks().forEach((t) => t.stop());
+      }
       recognition.start();
       setIsListening(true);
       startListenAmplitude();
@@ -385,14 +395,18 @@ export default function Home() {
 
   const stopListening = useCallback(() => {
     recognitionRef.current?.stop();
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+      return;
+    }
     setIsListening(false);
     stopListenAmplitude();
   }, []);
 
-  // Microphone amplitude visualizer for STT
-  const startListenAmplitude = useCallback(async () => {
+  // Microphone amplitude visualizer for STT (optional stream = reuse same mic as MediaRecorder)
+  const startListenAmplitude = useCallback(async (existingStream?: MediaStream) => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = existingStream ?? (await navigator.mediaDevices.getUserMedia({ audio: true }));
       listenStreamRef.current = stream;
       
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
@@ -425,6 +439,64 @@ export default function Home() {
       listenStreamRef.current = null;
     }
   }, []);
+
+  /** iPhone / browsers without Web Speech API: record short clip, transcribe via OpenAI Whisper */
+  const startFallbackRecording = async () => {
+    try {
+      if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+        const typed = window.prompt('Voice capture is not available here. Type your message:');
+        if (typed?.trim()) askVoice(typed);
+        return;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeCandidates = [
+        'audio/mp4',
+        'audio/webm;codecs=opus',
+        'audio/webm',
+      ];
+      const mimeType = mimeCandidates.find((m) => MediaRecorder.isTypeSupported(m)) ?? '';
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+
+      mediaRecorderRef.current = recorder;
+      mediaChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) mediaChunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        mediaRecorderRef.current = null;
+        try {
+          const blob = new Blob(mediaChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+          mediaChunksRef.current = [];
+          if (blob.size < 200) {
+            stopListenAmplitude();
+            setIsListening(false);
+            return;
+          }
+          const formData = new FormData();
+          formData.append('file', blob, 'voice.webm');
+          const tr = await fetch('/api/transcribe', { method: 'POST', body: formData });
+          const payload = await tr.json().catch(() => ({}));
+          const text = typeof payload?.text === 'string' ? payload.text.trim() : '';
+          if (text) await askVoice(text);
+        } finally {
+          stopListenAmplitude();
+          setIsListening(false);
+        }
+      };
+
+      await startListenAmplitude(stream);
+      recorder.start();
+      setIsListening(true);
+    } catch {
+      const typed = window.prompt('Could not access microphone. Type your message:');
+      if (typed?.trim()) askVoice(typed);
+      setIsListening(false);
+      stopListenAmplitude();
+    }
+  };
 
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white flex flex-col transition-colors duration-500">
@@ -582,19 +654,43 @@ export default function Home() {
             <div className="flex flex-col items-center gap-6 py-4 md:py-8">
               {/* Status text */}
               <div className="font-mono text-[10px] md:text-[11px] tracking-[0.2em] uppercase text-white/40">
-                {isTalking ? 'Speaking...' : isListening ? 'Listening...' : loading ? 'Thinking...' : 'Tap to speak'}
+                {isTalking
+                  ? 'Speaking...'
+                  : isListening
+                    ? mediaRecorderRef.current?.state === 'recording'
+                      ? 'Tap mic to stop & send'
+                      : 'Listening...'
+                    : loading
+                      ? 'Thinking...'
+                      : !speechSupported && mediaRecorderSupported
+                        ? 'Tap to record · tap again to send'
+                        : 'Tap to speak'}
               </div>
 
               {/* Large mic button */}
               <button
                 onClick={() => {
                   playClick();
-                  if (!speechSupported) {
-                    const typed = window.prompt('Voice input is limited on this phone/browser. Type your message:');
-                    if (typed?.trim()) askVoice(typed);
+                  if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+                    mediaRecorderRef.current.stop();
                     return;
                   }
-                  isListening ? stopListening() : startListening();
+                  if (isListening) {
+                    stopListening();
+                    return;
+                  }
+                  const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+                  if (SpeechRecognition) {
+                    if (!speechSupported) setSpeechSupported(true);
+                    void startListening();
+                    return;
+                  }
+                  if (mediaRecorderSupported) {
+                    void startFallbackRecording();
+                    return;
+                  }
+                  const typed = window.prompt('Voice input is not available here. Type your message:');
+                  if (typed?.trim()) askVoice(typed);
                 }}
                 disabled={loading || isTalking}
                 className={`w-14 h-14 md:w-16 md:h-16 flex items-center justify-center rounded-full transition-all duration-300 ${
@@ -620,9 +716,15 @@ export default function Home() {
                   isSpeaking={isTalking}
                 />
               </div>
-              {!speechSupported && (
+              {!speechSupported && mediaRecorderSupported && (
                 <div className="font-mono text-[10px] text-white/35 text-center max-w-[270px] leading-relaxed">
-                  Speech recognition is limited on this phone/browser. Tap mic to use typed fallback.
+                  On iPhone, speech uses a short recording sent for transcription (same{' '}
+                  <span className="text-white/50">GOOGLE_GEMINI_API_KEY</span> as chat).
+                </div>
+              )}
+              {!speechSupported && !mediaRecorderSupported && (
+                <div className="font-mono text-[10px] text-white/35 text-center max-w-[270px] leading-relaxed">
+                  Voice capture is not supported in this browser. Use typed chat in normal mode.
                 </div>
               )}
 
