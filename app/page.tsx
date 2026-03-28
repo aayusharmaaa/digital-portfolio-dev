@@ -8,6 +8,7 @@ import AchievementsMarquee from '@/components/AchievementsMarquee';
 import CustomCursor from '@/components/CustomCursor';
 import VoiceVisualizer from '@/components/VoiceVisualizer';
 import { useAudioAmplitude, decodeAudioBlob } from '@/lib/useAudioAmplitude';
+import { measurePlaybackDurationMs, runRevealWithDuration } from '@/lib/voiceReveal';
 import { useSoundEffects } from '@/lib/useSoundEffects';
 
 const AsciiModelAvatar = dynamic(() => import('@/components/AsciiModelAvatar'), { ssr: false });
@@ -253,35 +254,6 @@ export default function Home() {
       const setAssistantContent = (content: string) => {
         setChatHistory(prev => prev.map(m => (m.id === assistantId ? { ...m, content } : m)));
       };
-      const getBlobDurationMs = (blob: Blob) =>
-        new Promise<number>((resolve) => {
-          const url = URL.createObjectURL(blob);
-          const audio = new Audio(url);
-          audio.preload = 'metadata';
-          audio.onloadedmetadata = () => {
-            const ms = Number.isFinite(audio.duration) ? Math.max(0, audio.duration * 1000) : 0;
-            URL.revokeObjectURL(url);
-            resolve(ms);
-          };
-          audio.onerror = () => {
-            URL.revokeObjectURL(url);
-            resolve(0);
-          };
-        });
-      const revealText = (fullText: string, totalMs: number) =>
-        new Promise<void>((resolve) => {
-          cancelAnimationFrame(revealAnimRef.current);
-          const duration = Math.max(900, Math.min(totalMs || fullText.length * 28, 12000));
-          const start = performance.now();
-          const tick = (now: number) => {
-            const p = Math.min(1, (now - start) / duration);
-            const count = Math.floor(fullText.length * p);
-            setAssistantContent(fullText.slice(0, count));
-            if (p < 1) revealAnimRef.current = requestAnimationFrame(tick);
-            else resolve();
-          };
-          revealAnimRef.current = requestAnimationFrame(tick);
-        });
 
       try {
         const voiceRes = await fetch('/api/voice', {
@@ -291,15 +263,18 @@ export default function Home() {
         });
         if (voiceRes.ok) {
           const blob = await voiceRes.blob();
-          const durationMs = await getBlobDurationMs(blob);
+          const durationMs = await measurePlaybackDurationMs(blob);
           setIsTalking(true);
-          await Promise.all([revealText(reply, durationMs), playWithAmplitude(blob)]);
+          await Promise.all([
+            runRevealWithDuration(reply, durationMs, setAssistantContent, revealAnimRef),
+            playWithAmplitude(blob),
+          ]);
           setIsTalking(false);
         } else {
-          await revealText(reply, 0);
+          await runRevealWithDuration(reply, 0, setAssistantContent, revealAnimRef);
         }
       } catch {
-        await revealText(reply, 0);
+        await runRevealWithDuration(reply, 0, setAssistantContent, revealAnimRef);
         setIsTalking(false);
       }
       setAssistantContent(reply);
@@ -335,35 +310,6 @@ export default function Home() {
       const setAssistantContent = (content: string) => {
         setChatHistory(prev => prev.map(m => (m.id === assistantId ? { ...m, content } : m)));
       };
-      const getBlobDurationMs = (blob: Blob) =>
-        new Promise<number>((resolve) => {
-          const url = URL.createObjectURL(blob);
-          const audio = new Audio(url);
-          audio.preload = 'metadata';
-          audio.onloadedmetadata = () => {
-            const ms = Number.isFinite(audio.duration) ? Math.max(0, audio.duration * 1000) : 0;
-            URL.revokeObjectURL(url);
-            resolve(ms);
-          };
-          audio.onerror = () => {
-            URL.revokeObjectURL(url);
-            resolve(0);
-          };
-        });
-      const revealText = (fullText: string, totalMs: number) =>
-        new Promise<void>((resolve) => {
-          cancelAnimationFrame(revealAnimRef.current);
-          const duration = Math.max(900, Math.min(totalMs || fullText.length * 28, 12000));
-          const start = performance.now();
-          const tick = (now: number) => {
-            const p = Math.min(1, (now - start) / duration);
-            const count = Math.floor(fullText.length * p);
-            setAssistantContent(fullText.slice(0, count));
-            if (p < 1) revealAnimRef.current = requestAnimationFrame(tick);
-            else resolve();
-          };
-          revealAnimRef.current = requestAnimationFrame(tick);
-        });
 
       try {
         const voiceRes = await fetch('/api/voice', {
@@ -373,15 +319,18 @@ export default function Home() {
         });
         if (voiceRes.ok) {
           const blob = await voiceRes.blob();
-          const durationMs = await getBlobDurationMs(blob);
+          const durationMs = await measurePlaybackDurationMs(blob);
           setIsTalking(true);
-          await Promise.all([revealText(reply, durationMs), playWithAmplitude(blob)]);
+          await Promise.all([
+            runRevealWithDuration(reply, durationMs, setAssistantContent, revealAnimRef),
+            playWithAmplitude(blob),
+          ]);
           setIsTalking(false);
         } else {
-          await revealText(reply, 0);
+          await runRevealWithDuration(reply, 0, setAssistantContent, revealAnimRef);
         }
       } catch {
-        await revealText(reply, 0);
+        await runRevealWithDuration(reply, 0, setAssistantContent, revealAnimRef);
         setIsTalking(false);
       }
       setAssistantContent(reply);
@@ -618,76 +567,80 @@ export default function Home() {
           </h2>
         </div>
 
-        {/* 3D Model */}
-        <div className="flex-1 flex items-center justify-center px-3 sm:px-5 md:px-6 relative" style={{ minHeight: '46vh' }}>
-          {mounted && (
-            <div
-              className="w-full max-w-[750px] aspect-[4/3] relative transition-all duration-1000 ease-out"
-              style={{
-                opacity: modelReady ? 1 : 0,
-                transform: modelReady ? 'translateY(0) scale(1)' : 'translateY(20px) scale(0.98)',
-              }}
-            >
-              <AsciiModelAvatar
-                amplitude={amplitude}
-                modelUrl="/model.glb"
-                humanMode={conversationMode}
-                onLoaded={handleModelLoaded}
-                onProgress={handleModelProgress}
-              />
-
-              {/* Interaction hint — hidden while TTS plays so it does not clash with the status row */}
+        {/* 3D Model + dedicated status strip (avoids overlaying the canvas) */}
+        <div
+          className="flex-1 flex flex-col px-3 sm:px-5 md:px-6 min-h-0"
+          style={{ minHeight: '46vh' }}
+        >
+          <div className="flex-1 flex items-center justify-center min-h-0 relative">
+            {mounted && (
               <div
-                className="absolute -bottom-8 md:-bottom-7 left-1/2 -translate-x-1/2 font-mono text-[8px] sm:text-[9px] md:text-[10px] text-white/15 tracking-wider select-none pointer-events-none transition-opacity duration-700 delay-500 whitespace-nowrap"
-                style={{ opacity: modelReady && !isTalking ? 1 : 0 }}
+                className="w-full max-w-[750px] aspect-[4/3] relative transition-all duration-1000 ease-out"
+                style={{
+                  opacity: modelReady ? 1 : 0,
+                  transform: modelReady ? 'translateY(0) scale(1)' : 'translateY(20px) scale(0.98)',
+                }}
               >
-                drag to rotate · scroll to zoom
-              </div>
-            </div>
-          )}
-
-          {/* Loading state */}
-          {mounted && !modelReady && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
-              <div className="flex items-center gap-[3px] mb-4">
-                {[0, 1, 2, 3, 4].map(i => (
-                  <span
-                    key={i}
-                    className="block w-[3px] bg-white/40 rounded-full"
-                    style={{
-                      height: '14px',
-                      animation: `pulse-bar 1s ease-in-out ${i * 0.12}s infinite`,
-                    }}
-                  />
-                ))}
-              </div>
-              <div className="w-40 h-[1px] bg-white/10 relative overflow-hidden rounded-full">
-                <div
-                  className="h-full bg-white/50 transition-all duration-500 rounded-full"
-                  style={{ width: `${modelProgress}%` }}
+                <AsciiModelAvatar
+                  amplitude={amplitude}
+                  modelUrl="/model.glb"
+                  humanMode={conversationMode}
+                  onLoaded={handleModelLoaded}
+                  onProgress={handleModelProgress}
                 />
+
+                <div
+                  className="absolute -bottom-8 md:-bottom-7 left-1/2 -translate-x-1/2 font-mono text-[8px] sm:text-[9px] md:text-[10px] text-white/15 tracking-wider select-none pointer-events-none transition-opacity duration-700 delay-500 whitespace-nowrap"
+                  style={{ opacity: modelReady && !isTalking ? 1 : 0 }}
+                >
+                  drag to rotate · scroll to zoom
+                </div>
               </div>
-              <div className="font-mono text-[10px] text-white/20 mt-2 tracking-widest">
-                {modelProgress}%
+            )}
+
+            {mounted && !modelReady && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
+                <div className="flex items-center gap-[3px] mb-4">
+                  {[0, 1, 2, 3, 4].map(i => (
+                    <span
+                      key={i}
+                      className="block w-[3px] bg-white/40 rounded-full"
+                      style={{
+                        height: '14px',
+                        animation: `pulse-bar 1s ease-in-out ${i * 0.12}s infinite`,
+                      }}
+                    />
+                  ))}
+                </div>
+                <div className="w-40 h-[1px] bg-white/10 relative overflow-hidden rounded-full">
+                  <div
+                    className="h-full bg-white/50 transition-all duration-500 rounded-full"
+                    style={{ width: `${modelProgress}%` }}
+                  />
+                </div>
+                <div className="font-mono text-[10px] text-white/20 mt-2 tracking-widest">
+                  {modelProgress}%
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
-          {/* Greeting hint — sits above the model hint row so it does not overlap “drag to rotate” */}
-          {showGreetingHint && !greetingPlayed && (
-            <div className="absolute bottom-[4.25rem] sm:bottom-16 md:bottom-14 left-1/2 -translate-x-1/2 font-mono text-[10px] text-white/30 tracking-wider animate-pulse select-none pointer-events-none text-center max-w-[min(100%,20rem)] px-2">
-              tap anywhere to start
-            </div>
-          )}
-
-          {/* Talking indicator */}
-          {isTalking && (
-            <div className="absolute bottom-[4.25rem] sm:bottom-16 md:bottom-14 left-1/2 -translate-x-1/2 flex items-center justify-center gap-2 font-mono text-[10px] text-white/40 pointer-events-none">
-              <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-pulse shrink-0" />
-              speaking
-            </div>
-          )}
-
+          <div
+            className={`shrink-0 flex items-center justify-center text-center px-2 ${
+              isTalking || (showGreetingHint && !greetingPlayed) ? 'min-h-[2.75rem] py-1' : 'min-h-0'
+            }`}
+          >
+            {isTalking ? (
+              <div className="flex items-center justify-center gap-2 font-mono text-[10px] text-white/40 pointer-events-none">
+                <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-pulse shrink-0" />
+                speaking
+              </div>
+            ) : showGreetingHint && !greetingPlayed ? (
+              <div className="font-mono text-[10px] text-white/30 tracking-wider animate-pulse select-none pointer-events-none max-w-[min(100%,22rem)]">
+                tap anywhere to start
+              </div>
+            ) : null}
+          </div>
         </div>
 
         {/* ── Prompt Bar ─────────────────────────────────────────────── */}

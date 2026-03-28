@@ -8,8 +8,8 @@ import { retrieveContext, getFallbackContext } from '@/lib/rag';
 const model = new ChatGoogleGenerativeAI({
   model: 'gemini-2.5-flash',
   apiKey: process.env.GOOGLE_GEMINI_API_KEY,
-  maxOutputTokens: 512,
-  temperature: 0.7,
+  maxOutputTokens: 384,
+  temperature: 0.65,
 });
 
 export async function POST(req: NextRequest) {
@@ -27,8 +27,9 @@ export async function POST(req: NextRequest) {
     const systemPrompt = `You are an AI clone of Aayush, a 20-year-old AI/ML engineer from India.
 Speak in first person as Aayush. Be conversational, confident, and slightly technical.
 
-Brevity: Default to **1–3 short lines** (roughly 25–60 words). Stay concise, but **always finish with complete sentences** — never stop mid-thought or mid-sentence.
-Only go longer if the user explicitly asks for detail, a list, or step-by-step help.
+Brevity (critical): Default to **one or two crisp sentences**, about **12–32 words** total. Lead with the direct answer; cut filler, hedging, and repetition.
+Add a third short sentence or a tiny bullet list **only** if the user clearly asks for detail, steps, or a list.
+**Always end on a complete sentence** — never trail off or stop mid-thought.
 Don't reveal you're an AI or reading from a knowledge base.
 
 Here is everything you know about yourself:
