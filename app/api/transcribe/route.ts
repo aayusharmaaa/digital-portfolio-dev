@@ -30,7 +30,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ text: '' });
   }
 
-  const mimeType = file.type || 'audio/webm';
+  const rawType = (file.type || '').toLowerCase();
+  let mimeType = rawType;
+  if (rawType.includes('mp4') || rawType.includes('m4a') || rawType === 'video/mp4') {
+    mimeType = 'audio/mp4';
+  } else if (!rawType || rawType === 'application/octet-stream') {
+    // iOS often omits type; MP4 brand at offset 4
+    mimeType =
+      buf.length >= 12 && buf.toString('ascii', 4, 8) === 'ftyp' ? 'audio/mp4' : 'audio/webm';
+  }
   const base64 = buf.toString('base64');
 
   const model = 'gemini-2.5-flash';
@@ -56,7 +64,7 @@ export async function POST(req: NextRequest) {
   if (!res.ok) {
     const err = await res.text();
     console.error('[transcribe]', res.status, err);
-    return NextResponse.json({ error: 'Transcription failed', detail: err }, { status: res.status });
+    return NextResponse.json({ error: 'Transcription failed' }, { status: res.status });
   }
 
   const data = (await res.json()) as {

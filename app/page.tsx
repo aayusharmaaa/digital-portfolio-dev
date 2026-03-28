@@ -83,6 +83,8 @@ export default function Home() {
   const [speechSupported, setSpeechSupported] = useState(true);
   /** iOS / many mobile browsers lack Web Speech API — use MediaRecorder + /api/transcribe instead */
   const [mediaRecorderSupported, setMediaRecorderSupported] = useState(false);
+  /** Web Speech on iPhone/iPad is unreliable; always use MediaRecorder + server transcribe there */
+  const [preferRecorderVoice, setPreferRecorderVoice] = useState(false);
 
   // Handle Light Mode
   useEffect(() => {
@@ -111,6 +113,11 @@ export default function Home() {
       Boolean((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
     setSpeechSupported(supported);
     setMediaRecorderSupported(typeof window !== 'undefined' && typeof MediaRecorder !== 'undefined');
+    if (typeof navigator !== 'undefined') {
+      const ua = navigator.userAgent;
+      const touchMac = /Macintosh/i.test(ua) && navigator.maxTouchPoints > 1;
+      setPreferRecorderVoice(/iPhone|iPad|iPod/i.test(ua) || touchMac);
+    }
   }, []);
 
   useEffect(() => {
@@ -442,7 +449,7 @@ export default function Home() {
     }
   }, []);
 
-  /** iPhone / browsers without Web Speech API: record short clip, transcribe via OpenAI Whisper */
+  /** Browsers without Web Speech API (and iOS): record a clip, transcribe via /api/transcribe */
   const startFallbackRecording = async () => {
     try {
       if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
@@ -470,19 +477,24 @@ export default function Home() {
       recorder.onstop = async () => {
         mediaRecorderRef.current = null;
         try {
-          const blob = new Blob(mediaChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+          const outType = recorder.mimeType || 'audio/webm';
+          const blob = new Blob(mediaChunksRef.current, { type: outType });
           mediaChunksRef.current = [];
           if (blob.size < 200) {
             stopListenAmplitude();
             setIsListening(false);
             return;
           }
+          const ext = outType.includes('mp4') ? 'm4a' : 'webm';
           const formData = new FormData();
-          formData.append('file', blob, 'voice.webm');
+          formData.append('file', blob, `recording.${ext}`);
           const tr = await fetch('/api/transcribe', { method: 'POST', body: formData });
           const payload = await tr.json().catch(() => ({}));
           const text = typeof payload?.text === 'string' ? payload.text.trim() : '';
           if (text) await askVoice(text);
+          else if (!tr.ok) {
+            console.warn('[transcribe]', tr.status, payload);
+          }
         } finally {
           stopListenAmplitude();
           setIsListening(false);
@@ -490,7 +502,8 @@ export default function Home() {
       };
 
       await startListenAmplitude(stream);
-      recorder.start();
+      // iOS Safari often omits chunks until stop unless a timeslice is set
+      recorder.start(200);
       setIsListening(true);
     } catch {
       const typed = window.prompt('Could not access microphone. Type your message:');
@@ -664,7 +677,7 @@ export default function Home() {
                       : 'Listening...'
                     : loading
                       ? 'Thinking...'
-                      : !speechSupported && mediaRecorderSupported
+                      : preferRecorderVoice || (!speechSupported && mediaRecorderSupported)
                         ? 'Tap to record · tap again to send'
                         : 'Tap to speak'}
               </div>
@@ -682,12 +695,12 @@ export default function Home() {
                     return;
                   }
                   const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-                  if (SpeechRecognition) {
+                  if (!preferRecorderVoice && SpeechRecognition) {
                     if (!speechSupported) setSpeechSupported(true);
                     void startListening();
                     return;
                   }
-                  if (mediaRecorderSupported) {
+                  if (mediaRecorderSupported || preferRecorderVoice) {
                     void startFallbackRecording();
                     return;
                   }
@@ -718,17 +731,6 @@ export default function Home() {
                   isSpeaking={isTalking}
                 />
               </div>
-              {!speechSupported && mediaRecorderSupported && (
-                <div className="font-mono text-[10px] text-white/35 text-center max-w-[270px] leading-relaxed">
-                  On iPhone, speech uses a short recording sent for transcription (same{' '}
-                  <span className="text-white/50">GOOGLE_GEMINI_API_KEY</span> as chat).
-                </div>
-              )}
-              {!speechSupported && !mediaRecorderSupported && (
-                <div className="font-mono text-[10px] text-white/35 text-center max-w-[270px] leading-relaxed">
-                  Voice capture is not supported in this browser. Use typed chat in normal mode.
-                </div>
-              )}
 
             </div>
           ) : (
