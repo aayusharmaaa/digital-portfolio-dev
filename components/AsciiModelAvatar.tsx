@@ -414,12 +414,30 @@ export default function AsciiModelAvatar({
       smoothRotY = THREE.MathUtils.lerp(smoothRotY, modelRotRef.current.y, 0.08);
       smoothRotX = THREE.MathUtils.lerp(smoothRotX, modelRotRef.current.x, 0.08);
 
-      // Idle sway: starts at zero and gradually eases in over 6 seconds after model loads
-      // so the clone looks straight at center during the initial reveal transition
-      const swayEase = modelLoaded ? Math.min(1, (Date.now() - modelLoadedTime) / 6000) : 0;
-      const idleSwayX = Math.sin(t * 0.8) * 0.03 * swayEase;
-      const idleSwayY = Math.sin(t * 0.5) * 0.15 * swayEase;
-      const idleSwayZ = Math.cos(t * 0.6) * 0.02 * swayEase;
+      // Idle sway: gentle, organic motion so the model feels alive.
+      // Gradually eases in over 8 seconds after load so the initial reveal is clean.
+      const swayEase = modelLoaded ? Math.min(1, (Date.now() - modelLoadedTime) / 8000) : 0;
+      const inHuman = humanModeRef.current;
+
+      // Y-axis (looking left ↔ right) — smooth, subtle sweep
+      const idleSwayY = (
+        Math.sin(t * 0.3) * 0.18 +     // slow sweep
+        Math.sin(t * 0.7) * 0.06        // gentle overlay
+      ) * swayEase;
+
+      // X-axis (nodding up ↕ down) — subtle normally, more evident in Human Mode
+      const nodAmp = inHuman ? 0.12 : 0.03;
+      const nodOverlay = inHuman ? 0.06 : 0.015;
+      const idleSwayX = (
+        Math.sin(t * 0.45) * nodAmp +
+        Math.sin(t * 0.95) * nodOverlay
+      ) * swayEase;
+
+      // Z-axis (head tilt) — very subtle
+      const idleSwayZ = (
+        Math.cos(t * 0.28) * 0.012 +
+        Math.sin(t * 0.6) * 0.006
+      ) * swayEase;
 
       pivot.rotation.y = smoothRotY + idleSwayY;
       pivot.rotation.x = smoothRotX + idleSwayX;

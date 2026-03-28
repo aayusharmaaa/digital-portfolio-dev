@@ -29,8 +29,8 @@ const PROJECTS = [
     link: '#',
   },
   {
-    id: 'thoughtbasic',
-    title: 'ThoughtBasic',
+    id: 'thoughtspace',
+    title: 'ThoughtSpace',
     description: 'Spatial canvas app for rediscovering saved notes across Health, Wealth, and Wisdom. Uses GPT-4 to auto-categorize content and surface meaningful connections.',
     image: '/projects/thoughtbasic.png',
     link: '#',
