@@ -148,12 +148,19 @@ export default function Home() {
 
     void fetchIntroBlob(INTRO_GREETING_URL, GREETING)
       .then(async (blob) => {
-        if (!blob) return;
-        greetingBlobRef.current = blob;
-        greetingDecodedRef.current = await decodeAudioBlob(blob);
+        if (blob) {
+          greetingBlobRef.current = blob;
+          try {
+            greetingDecodedRef.current = await decodeAudioBlob(blob);
+          } catch {
+            greetingDecodedRef.current = null;
+          }
+        }
         setGreetingAudioReady(true);
       })
-      .catch(() => {});
+      .catch(() => {
+        setGreetingAudioReady(true);
+      });
   }, [mounted]);
 
   useEffect(() => {
@@ -230,21 +237,22 @@ export default function Home() {
         greetingManualLockRef.current = false;
         setShowGreetingHint(true);
       };
-      void (async () => {
-        try {
-          await playWithAmplitude(blob);
+      // Must call playWithAmplitude in the same sync stack as the touch/pointer event — an async
+      // IIFE defers to a microtask and iOS will not start audio (or Web Audio stays silent).
+      void playWithAmplitude(blob)
+        .then(() => {
           setGreetingPlayed(true);
-        } catch {
-          try {
-            await playBlobWithInlineAudio(blob);
-            setGreetingPlayed(true);
-          } catch {
-            finishFail();
-          }
-        } finally {
+        })
+        .catch(() =>
+          playBlobWithInlineAudio(blob)
+            .then(() => {
+              setGreetingPlayed(true);
+            })
+            .catch(finishFail),
+        )
+        .finally(() => {
           setIsTalking(false);
-        }
-      })();
+        });
     };
 
     const opts = { capture: true, passive: true } as const;

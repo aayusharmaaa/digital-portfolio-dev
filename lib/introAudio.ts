@@ -7,7 +7,7 @@ export async function fetchIntroBlob(
   ttsFallbackText: string,
 ): Promise<Blob | null> {
   try {
-    const res = await fetch(staticUrl, { cache: 'force-cache' });
+    const res = await fetch(staticUrl);
     if (res.ok) return await res.blob();
   } catch {
     /* missing or blocked */
