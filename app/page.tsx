@@ -156,12 +156,23 @@ export default function Home() {
       .catch(() => {});
   }, [mounted]);
 
-  // When both the model and greeting audio are ready, try autoplay (works on many desktops;
-  // phones block without a gesture — then we show the hint and use capture-phase listeners).
+  // When both the model and greeting audio are ready: desktop may autoplay; touch devices need a tap
+  // (autoplay fails and used to leave "speaking" stuck when Strict Mode aborted the effect mid-flight).
   useEffect(() => {
     if (!modelReady || !greetingAudioReady || greetingPlayed) return;
     const blob = greetingBlobRef.current;
     if (!blob) return;
+
+    const touchFirst =
+      typeof window !== 'undefined' &&
+      (window.matchMedia?.('(pointer: coarse)').matches ||
+        /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+        (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1));
+
+    if (touchFirst) {
+      setShowGreetingHint(true);
+      return;
+    }
 
     let cancelled = false;
 
@@ -187,6 +198,7 @@ export default function Home() {
     void run();
     return () => {
       cancelled = true;
+      setIsTalking(false);
     };
   }, [modelReady, greetingAudioReady, greetingPlayed, playWithAmplitude, playBufferWithAmplitude]);
 
