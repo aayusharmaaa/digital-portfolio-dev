@@ -10,6 +10,7 @@ import VoiceVisualizer from '@/components/VoiceVisualizer';
 import { useAudioAmplitude, decodeAudioBlob } from '@/lib/useAudioAmplitude';
 import { measurePlaybackDurationMs, runRevealWithDuration } from '@/lib/voiceReveal';
 import { playBlobWithInlineAudio } from '@/lib/playInlineAudio';
+import { fetchIntroBlob, INTRO_GREETING_URL, INTRO_HUMAN_MODE_URL } from '@/lib/introAudio';
 import { useSoundEffects } from '@/lib/useSoundEffects';
 
 const AsciiModelAvatar = dynamic(() => import('@/components/AsciiModelAvatar'), { ssr: false });
@@ -98,6 +99,8 @@ export default function Home() {
   const greetingBlobRef = useRef<Blob | null>(null);
   const greetingDecodedRef = useRef<AudioBuffer | null>(null);
   const greetingFetchedRef = useRef(false);
+  const humanIntroBlobRef = useRef<Blob | null>(null);
+  const humanIntroFetchedRef = useRef(false);
   /** Prevents overlapping manual greeting plays (e.g. pointerdown + touchstart). */
   const greetingManualLockRef = useRef(false);
   const [greetingAudioReady, setGreetingAudioReady] = useState(false);
@@ -108,7 +111,8 @@ export default function Home() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaChunksRef = useRef<Blob[]>([]);
 
-  const { amplitude, playWithAmplitude, playBufferWithAmplitude, stop } = useAudioAmplitude();
+  const { amplitude, playWithAmplitude, playBufferWithAmplitude, stop, unlockAudioFromUI } =
+    useAudioAmplitude();
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => {
@@ -137,17 +141,12 @@ export default function Home() {
   const handleModelLoaded = useCallback(() => setModelReady(true), []);
   const handleModelProgress = useCallback((pct: number) => setModelProgress(pct), []);
 
-  // Prefetch greeting TTS in parallel with the 3D model so audio is ready when the model appears.
+  // Prefetch intro audio: static files in /public/audio/ if present, else ElevenLabs TTS.
   useEffect(() => {
     if (!mounted || greetingFetchedRef.current) return;
     greetingFetchedRef.current = true;
 
-    fetch('/api/voice', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: GREETING }),
-    })
-      .then((res) => (res.ok ? res.blob() : null))
+    void fetchIntroBlob(INTRO_GREETING_URL, GREETING)
       .then(async (blob) => {
         if (!blob) return;
         greetingBlobRef.current = blob;
@@ -155,6 +154,14 @@ export default function Home() {
         setGreetingAudioReady(true);
       })
       .catch(() => {});
+  }, [mounted]);
+
+  useEffect(() => {
+    if (!mounted || humanIntroFetchedRef.current) return;
+    humanIntroFetchedRef.current = true;
+    void fetchIntroBlob(INTRO_HUMAN_MODE_URL, HUMAN_GREETING).then((blob) => {
+      if (blob) humanIntroBlobRef.current = blob;
+    });
   }, [mounted]);
 
   // When both the model and greeting audio are ready: desktop may autoplay; touch devices need a tap
@@ -218,17 +225,26 @@ export default function Home() {
       setShowGreetingHint(false);
       setIsTalking(true);
       stop();
-      void playBlobWithInlineAudio(blob)
-        .then(() => {
+      unlockAudioFromUI();
+      const finishFail = () => {
+        greetingManualLockRef.current = false;
+        setShowGreetingHint(true);
+      };
+      void (async () => {
+        try {
+          await playWithAmplitude(blob);
           setGreetingPlayed(true);
-        })
-        .catch(() => {
-          greetingManualLockRef.current = false;
-          setShowGreetingHint(true);
-        })
-        .finally(() => {
+        } catch {
+          try {
+            await playBlobWithInlineAudio(blob);
+            setGreetingPlayed(true);
+          } catch {
+            finishFail();
+          }
+        } finally {
           setIsTalking(false);
-        });
+        }
+      })();
     };
 
     const opts = { capture: true, passive: true } as const;
@@ -273,7 +289,7 @@ export default function Home() {
       document.removeEventListener('touchend', onTouchEnd, opts);
       document.removeEventListener('pointerdown', onPointerDown, opts);
     };
-  }, [showGreetingHint, greetingPlayed, stop]);
+  }, [showGreetingHint, greetingPlayed, stop, playWithAmplitude, unlockAudioFromUI]);
 
   const ask = async (text: string) => {
     if (!text.trim() || loading) return;
@@ -847,30 +863,35 @@ export default function Home() {
             <button
               onClick={async () => {
                 const next = !conversationMode;
-                if (next) playToggleOn(); else playToggleOff();
-                
+                if (next) playToggleOn();
+                else playToggleOff();
+
+                if (next) {
+                  unlockAudioFromUI();
+                }
+
                 setConversationMode(next);
                 if (next) {
-                  // Speak greeting when entering Human Mode
                   try {
-                    const voiceRes = await fetch('/api/voice', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ text: HUMAN_GREETING }),
-                    });
-                    if (voiceRes.ok) {
-                      const blob = await voiceRes.blob();
+                    let blob = humanIntroBlobRef.current;
+                    if (!blob) {
+                      blob = await fetchIntroBlob(INTRO_HUMAN_MODE_URL, HUMAN_GREETING);
+                      if (blob) humanIntroBlobRef.current = blob;
+                    }
+                    if (blob) {
                       setIsTalking(true);
-                      await playWithAmplitude(blob);
+                      try {
+                        await playWithAmplitude(blob);
+                      } catch {
+                        await playBlobWithInlineAudio(blob);
+                      }
                       setIsTalking(false);
                     }
                   } catch {
                     setIsTalking(false);
                   }
-                  // Auto-start listening after greeting (gesture-safe contexts only)
                   setTimeout(() => startListening(true), 500);
                 } else {
-                  // Turning off — stop listening
                   stopListening();
                 }
               }}

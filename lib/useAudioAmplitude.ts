@@ -27,6 +27,23 @@ export function useAudioAmplitude() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const bufferSourceRef = useRef<AudioBufferSourceNode | null>(null);
 
+  /**
+   * Call synchronously from click/tap handlers **before** any `await` so Safari keeps the
+   * AudioContext in "running" state for MediaElementSource → analyser (jaw) on first use.
+   */
+  const unlockAudioFromUI = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const Ctor =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!Ctor) return;
+    if (!contextRef.current || contextRef.current.state === 'closed') {
+      contextRef.current = new Ctor();
+    }
+    const ctx = contextRef.current;
+    if (ctx.state === 'suspended') void ctx.resume();
+  }, []);
+
   const stop = useCallback(() => {
     cancelAnimationFrame(rafRef.current);
     try {
@@ -141,7 +158,6 @@ export function useAudioAmplitude() {
         URL.revokeObjectURL(url);
         audioRef.current = null;
       };
-      audio.onplay = () => poll();
       audio.onended = () => {
         cleanup();
         resolve();
@@ -150,6 +166,9 @@ export function useAudioAmplitude() {
         cleanup();
         reject(new Error('Audio playback error'));
       };
+      // Start the analyser loop immediately; relying only on `onplay` can miss the first
+      // Human Mode entry after `await fetch` (Safari still plays audio but jaw stays flat).
+      poll();
       audio.play().catch((e) => {
         cleanup();
         reject(e instanceof Error ? e : new Error(String(e)));
@@ -157,5 +176,5 @@ export function useAudioAmplitude() {
     });
   }, [stop]);
 
-  return { amplitude, playWithAmplitude, playBufferWithAmplitude, stop };
+  return { amplitude, playWithAmplitude, playBufferWithAmplitude, stop, unlockAudioFromUI };
 }
