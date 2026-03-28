@@ -204,12 +204,18 @@ export default function Home() {
         greetingManualLockRef.current = false;
         setShowGreetingHint(true);
       };
-      // Same path on mobile + desktop: buffer → Web Audio analyser (lip sync) → MediaElement
-      // → only then plain inline <audio> in the catch (audio but no jaw).
-      // Touch used to skip straight to inline audio, which worked for sound but amplitude stayed 0.
+      // Phones: plain <audio playsinline> only. Web Audio first breaks many iOS/Safari taps
+      // (silent output + gesture consumed), so the catch fallback often never plays either.
+      // Desktop: buffer / MediaElement → analyser for lip sync; catch still uses inline.
+      const isTouchDevice =
+        window.matchMedia?.('(pointer: coarse)').matches ||
+        /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+        (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+
       const decoded = greetingDecodedRef.current;
-      const playPromise =
-        decoded != null
+      const playPromise = isTouchDevice
+        ? playBlobWithInlineAudio(blob)
+        : decoded != null
           ? playBufferWithAmplitude(decoded).catch(() => playWithAmplitude(blob))
           : playWithAmplitude(blob);
 
