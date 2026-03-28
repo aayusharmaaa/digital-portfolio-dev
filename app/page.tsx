@@ -246,7 +246,7 @@ export default function Home() {
     /** Avoid firing after scroll drags (touchend alone would misfire). */
     const tapStart = { x: 0, y: 0 };
     const onTouchStart = (e: TouchEvent) => {
-      const t = e.changedTouches[0];
+      const t = e.touches[0] ?? e.changedTouches[0];
       if (t) {
         tapStart.x = t.clientX;
         tapStart.y = t.clientY;
