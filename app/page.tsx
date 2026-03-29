@@ -662,12 +662,12 @@ export default function Home() {
         {/* 3D Model + dedicated status strip (avoids overlaying the canvas) */}
         <div
           className="flex-1 flex flex-col px-3 sm:px-5 md:px-6 min-h-0"
-          style={{ minHeight: '38vh' }}
+          style={{ minHeight: '46vh' }}
         >
           <div className="flex-1 flex items-center justify-center min-h-0 relative">
             {mounted && (
               <div
-                className="w-full max-w-[min(88vw,640px)] aspect-[4/3] max-h-[min(44vh,88vw)] mx-auto relative transition-all duration-1000 ease-out"
+                className="w-full max-w-[750px] aspect-[4/3] relative transition-all duration-1000 ease-out"
                 style={{
                   opacity: modelReady ? 1 : 0,
                   transform: modelReady ? 'translateY(0) scale(1)' : 'translateY(20px) scale(0.98)',
@@ -738,9 +738,9 @@ export default function Home() {
           )}
         </div>
 
-        {/* ── Prompt Bar — always visible (input bar); model load only affects hero avatar */}
+        {/* ── Prompt Bar ─────────────────────────────────────────────── */}
         <div
-          className="w-full max-w-3xl mx-auto px-3 sm:px-5 md:px-6 pb-5 md:pb-6 mt-6 md:mt-8 transition-all duration-700 ease-out delay-300 shrink-0"
+          className="w-full max-w-3xl mx-auto px-3 sm:px-5 md:px-6 pb-5 md:pb-6 mt-8 md:mt-12 transition-all duration-700 ease-out delay-300"
           style={{
             opacity: mounted ? 1 : 0,
             transform: mounted ? 'translateY(0)' : 'translateY(10px)',
