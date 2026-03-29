@@ -210,11 +210,16 @@ export default function Home() {
         /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
         (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
 
-      // Touch: inline <audio> only. Do NOT call unlockAudioFromUI() here — AudioContext.resume()
-      // schedules async work and Safari can treat HTMLAudioElement.play() as no longer in the
-      // user gesture chain, so playback stays blocked while UI still shows "speaking".
+      // Touch: try decoded buffer + analyser first (lip sync). Still no unlockAudioFromUI() here.
+      // If BufferSource fails or is blocked, fall back to inline <audio> (sound, no jaw).
       if (isTouchDevice) {
-        void playBlobWithInlineAudio(blob)
+        const decoded = greetingDecodedRef.current;
+        const touchPlay =
+          decoded != null
+            ? playBufferWithAmplitude(decoded).catch(() => playBlobWithInlineAudio(blob))
+            : playBlobWithInlineAudio(blob);
+
+        void touchPlay
           .then(() => {
             setGreetingPlayed(true);
           })
@@ -681,12 +686,23 @@ export default function Home() {
                   onProgress={handleModelProgress}
                 />
 
-                <div
-                  className="absolute -bottom-8 md:-bottom-7 left-1/2 -translate-x-1/2 font-mono text-[8px] sm:text-[9px] md:text-[10px] text-white/15 tracking-wider select-none pointer-events-none transition-opacity duration-700 delay-500 whitespace-nowrap"
-                  style={{ opacity: modelReady && !isTalking ? 1 : 0 }}
-                >
-                  drag to rotate · scroll to zoom
-                </div>
+                {modelReady && !isTalking && (
+                  greetingPlayed ? (
+                    <div
+                      key="hint-drag"
+                      className="avatar-hint absolute -bottom-8 md:-bottom-7 left-1/2 -translate-x-1/2 font-mono text-[8px] sm:text-[9px] md:text-[10px] text-white/15 tracking-wider select-none pointer-events-none transition-opacity duration-500 max-w-[min(100%,22rem)] text-center leading-tight whitespace-nowrap"
+                    >
+                      drag to rotate · scroll to zoom
+                    </div>
+                  ) : (
+                    <div
+                      key="hint-start"
+                      className="avatar-hint absolute -bottom-8 md:-bottom-7 left-1/2 -translate-x-1/2 font-mono text-[8px] sm:text-[9px] md:text-[10px] text-white/15 tracking-wider select-none pointer-events-none transition-opacity duration-500 max-w-[min(100%,22rem)] text-center leading-tight"
+                    >
+                      click or tap anywhere to start
+                    </div>
+                  )
+                )}
               </div>
             )}
 
@@ -721,17 +737,13 @@ export default function Home() {
           {!conversationMode && (
             <div
               className={`shrink-0 flex items-center justify-center text-center px-2 ${
-                isTalking || (showGreetingHint && !greetingPlayed) ? 'min-h-[2.75rem] py-1' : 'min-h-0'
+                isTalking ? 'min-h-[2.75rem] py-1' : 'min-h-0'
               }`}
             >
               {isTalking ? (
                 <div className="flex items-center justify-center gap-2 font-mono text-[10px] text-white/40 pointer-events-none">
                   <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-pulse shrink-0" />
                   speaking
-                </div>
-              ) : showGreetingHint && !greetingPlayed ? (
-                <div className="font-mono text-[10px] text-white/30 tracking-wider animate-pulse select-none pointer-events-none max-w-[min(100%,22rem)]">
-                  click or tap anywhere to start
                 </div>
               ) : null}
             </div>
