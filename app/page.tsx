@@ -199,25 +199,40 @@ export default function Home() {
       setShowGreetingHint(false);
       setIsTalking(true);
       stop();
-      unlockAudioFromUI();
+
       const finishFail = () => {
         greetingManualLockRef.current = false;
         setShowGreetingHint(true);
       };
-      // Lip sync needs Web Audio. BufferSource + time-domain RMS works for speech; frequency
-      // data was often ~flat so the jaw didn’t move. Phones: try decoded buffer first (often OK
-      // on iOS from a tap); avoid MediaElement until desktop chain — if buffer fails, inline audio.
+
       const isTouchDevice =
         window.matchMedia?.('(pointer: coarse)').matches ||
         /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
         (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
 
+      // Touch: inline <audio> only. Do NOT call unlockAudioFromUI() here — AudioContext.resume()
+      // schedules async work and Safari can treat HTMLAudioElement.play() as no longer in the
+      // user gesture chain, so playback stays blocked while UI still shows "speaking".
+      if (isTouchDevice) {
+        void playBlobWithInlineAudio(blob)
+          .then(() => {
+            setGreetingPlayed(true);
+          })
+          .catch(() =>
+            playBlobWithInlineAudio(blob)
+              .then(() => setGreetingPlayed(true))
+              .catch(finishFail),
+          )
+          .finally(() => {
+            setIsTalking(false);
+          });
+        return;
+      }
+
+      unlockAudioFromUI();
       const decoded = greetingDecodedRef.current;
-      const playPromise = isTouchDevice
-        ? decoded != null
-          ? playBufferWithAmplitude(decoded).catch(() => playBlobWithInlineAudio(blob))
-          : playBlobWithInlineAudio(blob)
-        : decoded != null
+      const playPromise =
+        decoded != null
           ? playBufferWithAmplitude(decoded).catch(() => playWithAmplitude(blob))
           : playWithAmplitude(blob);
 
@@ -243,12 +258,17 @@ export default function Home() {
         (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1));
 
     const onPointerDown = (e: PointerEvent) => {
+      // iOS: pointerdown(touch) runs before touchend; Web Audio from it can be silent and sets
+      // greetingManualLockRef so touchend never starts inline audio. Only touchend plays greeting on touch.
+      if (e.pointerType === 'touch') return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       playGreetingFromGesture();
     };
 
     const onClickCapture = (e: MouseEvent) => {
       if (e.button !== 0) return;
+      // iOS fires a delayed synthetic click after touchend; it is not a reliable media gesture.
+      if (coarse) return;
       playGreetingFromGesture();
     };
 
@@ -642,12 +662,12 @@ export default function Home() {
         {/* 3D Model + dedicated status strip (avoids overlaying the canvas) */}
         <div
           className="flex-1 flex flex-col px-3 sm:px-5 md:px-6 min-h-0"
-          style={{ minHeight: '46vh' }}
+          style={{ minHeight: '38vh' }}
         >
           <div className="flex-1 flex items-center justify-center min-h-0 relative">
             {mounted && (
               <div
-                className="w-full max-w-[750px] aspect-[4/3] relative transition-all duration-1000 ease-out"
+                className="w-full max-w-[min(88vw,640px)] aspect-[4/3] max-h-[min(44vh,88vw)] mx-auto relative transition-all duration-1000 ease-out"
                 style={{
                   opacity: modelReady ? 1 : 0,
                   transform: modelReady ? 'translateY(0) scale(1)' : 'translateY(20px) scale(0.98)',
@@ -718,12 +738,12 @@ export default function Home() {
           )}
         </div>
 
-        {/* ── Prompt Bar ─────────────────────────────────────────────── */}
+        {/* ── Prompt Bar — always visible (input bar); model load only affects hero avatar */}
         <div
-          className="w-full max-w-3xl mx-auto px-3 sm:px-5 md:px-6 pb-5 md:pb-6 mt-8 md:mt-12 transition-all duration-700 ease-out delay-300"
+          className="w-full max-w-3xl mx-auto px-3 sm:px-5 md:px-6 pb-5 md:pb-6 mt-6 md:mt-8 transition-all duration-700 ease-out delay-300 shrink-0"
           style={{
-            opacity: modelReady ? 1 : 0,
-            transform: modelReady ? 'translateY(0)' : 'translateY(10px)',
+            opacity: mounted ? 1 : 0,
+            transform: mounted ? 'translateY(0)' : 'translateY(10px)',
           }}
         >
 

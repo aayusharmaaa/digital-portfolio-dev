@@ -11,8 +11,14 @@ export function playBlobWithInlineAudio(blob: Blob): Promise<void> {
     el.setAttribute('webkit-playsinline', 'true');
     el.preload = 'auto';
     el.volume = 1;
+    el.muted = false;
+    try {
+      (el as HTMLAudioElement & { playsInline?: boolean }).playsInline = true;
+    } catch {
+      /* */
+    }
     el.src = url;
-    el.style.cssText = 'position:fixed;left:-9999px;width:1px;height:1px;opacity:0';
+    el.style.cssText = 'position:fixed;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none';
     document.body.appendChild(el);
 
     const tearDown = () => {
@@ -35,6 +41,8 @@ export function playBlobWithInlineAudio(blob: Blob): Promise<void> {
     };
 
     try {
+      // Same synchronous turn as the tap — required on iOS. load() helps Safari pick up the blob.
+      el.load();
       const p = el.play();
       if (p !== undefined) {
         void p.catch((err: unknown) => {
