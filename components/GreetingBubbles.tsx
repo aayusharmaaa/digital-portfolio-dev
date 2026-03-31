@@ -12,6 +12,11 @@ export default function GreetingBubbles({ show }: Props) {
   const { playClick } = useSoundEffects();
 
   useEffect(() => {
+    // Ignore greeting bubbles entirely on phones to avoid cluttering and overlapping
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      return;
+    }
+
     if (show) {
       // Different bubbles appearing at different times during the greeting
       const bubbleItems = [
@@ -43,7 +48,7 @@ export default function GreetingBubbles({ show }: Props) {
   if (!show || bubbles.length === 0) return null;
 
   return (
-    <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden">
+    <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden hidden md:block">
       {bubbles.map((b: any) => (
         <div
           key={b.id}
