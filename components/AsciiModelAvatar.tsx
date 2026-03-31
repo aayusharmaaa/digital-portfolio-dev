@@ -164,7 +164,7 @@ export default function AsciiModelAvatar({
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     // Lower initial GPU cost on phones for faster first render.
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.25 : 2));
-    renderer.setClearColor(0x0a0a0a, 1);
+    renderer.setClearColor(0x000000, 0);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.4;
@@ -175,6 +175,7 @@ export default function AsciiModelAvatar({
     renderer.domElement.style.width = '100%';
     renderer.domElement.style.height = '100%';
     renderer.domElement.style.pointerEvents = 'none';
+    renderer.domElement.classList.add('webgl-canvas');
     container.appendChild(renderer.domElement);
 
     // ASCII Setup (Pixel-Perfect Grid)
@@ -246,6 +247,7 @@ export default function AsciiModelAvatar({
     let blinkLIdx: number | undefined;
     let blinkRIdx: number | undefined;
     let headBone: THREE.Object3D | null = null;
+    let headBoneBaseRot = new THREE.Euler();
     let modelLoaded = false;
     let modelLoadedTime = 0;
 
@@ -290,7 +292,10 @@ export default function AsciiModelAvatar({
             }
           }
           const n = obj.name.toLowerCase();
-          if (!headBone && (n === 'head' || n.includes('head'))) headBone = obj;
+          if (!headBone && (n === 'head' || n.includes('head'))) {
+            headBone = obj;
+            headBoneBaseRot.copy(headBone.rotation);
+          }
         });
 
         const allBones: string[] = [];
@@ -419,15 +424,15 @@ export default function AsciiModelAvatar({
       const swayEase = modelLoaded ? Math.min(1, (Date.now() - modelLoadedTime) / 8000) : 0;
       const inHuman = humanModeRef.current;
 
-      // Y-axis (looking left ↔ right) — smooth, subtle sweep
+      // Y-axis (looking left ↔ right) — small natural sweep
       const idleSwayY = (
-        Math.sin(t * 0.3) * 0.18 +     // slow sweep
-        Math.sin(t * 0.7) * 0.06        // gentle overlay
+        Math.sin(t * 0.6) * 0.12 +     // moderate main sweep (faster)
+        Math.sin(t * 1.3) * 0.04        // gentle detailed overlay (faster)
       ) * swayEase;
 
-      // X-axis (nodding up ↕ down) — subtle normally, more evident in Human Mode
-      const nodAmp = inHuman ? 0.12 : 0.03;
-      const nodOverlay = inHuman ? 0.06 : 0.015;
+      // X-axis (nodding up ↕ down) — keep it subtle
+      const nodAmp = 0.01;
+      const nodOverlay = 0.005;
       const idleSwayX = (
         Math.sin(t * 0.45) * nodAmp +
         Math.sin(t * 0.95) * nodOverlay
@@ -435,13 +440,23 @@ export default function AsciiModelAvatar({
 
       // Z-axis (head tilt) — very subtle
       const idleSwayZ = (
-        Math.cos(t * 0.28) * 0.012 +
-        Math.sin(t * 0.6) * 0.006
+        Math.cos(t * 0.28) * 0.006 +
+        Math.sin(t * 0.6) * 0.003
       ) * swayEase;
 
-      pivot.rotation.y = smoothRotY + idleSwayY;
-      pivot.rotation.x = smoothRotX + idleSwayX;
-      pivot.rotation.z = idleSwayZ;
+      // Mouse drag rotation applies to the whole body (pivot)
+      pivot.rotation.y = smoothRotY;
+      pivot.rotation.x = smoothRotX;
+      pivot.rotation.z = 0;
+      // Completely removed Y-axis breathing translation as requested
+      pivot.position.y = 0;
+
+      // Idle sway applies exclusively to the head bone so the body remains completely still
+      if (headBone) {
+        headBone.rotation.y = headBoneBaseRot.y + idleSwayY;
+        headBone.rotation.x = headBoneBaseRot.x + idleSwayX;
+        headBone.rotation.z = headBoneBaseRot.z + idleSwayZ;
+      }
 
       if (modelLoaded) {
         const zoom = zoomRef.current;

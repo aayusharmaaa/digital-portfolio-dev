@@ -7,6 +7,7 @@ import ExperienceTimeline from '@/components/ExperienceTimeline';
 import AchievementsMarquee from '@/components/AchievementsMarquee';
 import CustomCursor from '@/components/CustomCursor';
 import VoiceVisualizer from '@/components/VoiceVisualizer';
+import GreetingBubbles from '@/components/GreetingBubbles';
 import { useAudioAmplitude, decodeAudioBlob } from '@/lib/useAudioAmplitude';
 import { measurePlaybackDurationMs, runRevealWithDuration } from '@/lib/voiceReveal';
 import { playBlobWithInlineAudio } from '@/lib/playInlineAudio';
@@ -84,6 +85,7 @@ export default function Home() {
   const [modelProgress, setModelProgress] = useState(0);
   const [isTalking, setIsTalking] = useState(false);
   const [greetingPlayed, setGreetingPlayed] = useState(false);
+  const [greetingStarted, setGreetingStarted] = useState(false);
   const [showGreetingHint, setShowGreetingHint] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [isListening, setIsListening] = useState(false);
@@ -198,6 +200,7 @@ export default function Home() {
       greetingManualLockRef.current = true;
       setShowGreetingHint(false);
       setIsTalking(true);
+      setGreetingStarted(true);
       stop();
 
       const finishFail = () => {
@@ -672,10 +675,13 @@ export default function Home() {
           <div className="flex-1 flex items-center justify-center min-h-0 relative">
             {mounted && (
               <div
-                className="w-full max-w-[750px] aspect-[4/3] relative transition-all duration-1000 ease-out"
+                className={`w-full max-w-[750px] aspect-[4/3] relative transition-all duration-1000 ease-out ${
+                  modelReady
+                    ? 'translate-y-0 scale-100 md:scale-90'
+                    : 'translate-y-5 scale-[0.98] md:scale-[0.88]'
+                }`}
                 style={{
                   opacity: modelReady ? 1 : 0,
-                  transform: modelReady ? 'translateY(0) scale(1)' : 'translateY(20px) scale(0.98)',
                 }}
               >
                 <AsciiModelAvatar
@@ -685,6 +691,8 @@ export default function Home() {
                   onLoaded={handleModelLoaded}
                   onProgress={handleModelProgress}
                 />
+                
+                <GreetingBubbles show={greetingStarted} />
 
                 {modelReady && !isTalking && (
                   greetingPlayed ? (

@@ -61,16 +61,16 @@ function ProjectCard({ project, index }: { project: typeof PROJECTS[0]; index: n
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ delay: index * 0.1, duration: 0.4 }}
-      whileHover={{ y: -8, scale: 1.02 }}
+      whileHover={{ y: -12, scale: 1.06 }}
       onClick={(e) => {
         if (isPlaceholderLink) e.preventDefault();
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="group block relative hover:z-20 outline-none touch-manipulation"
+      className="group block relative hover:z-20 outline-none touch-manipulation transition-colors"
     >
       {/* Media Box */}
-      <div className="aspect-video bg-white/[0.03] border border-white/10 overflow-hidden mb-3 md:mb-5 relative transition-all duration-500 group-hover:border-white/30 group-hover:shadow-[0_0_40px_rgba(255,255,255,0.06)] rounded-sm group/media">
+      <div className="aspect-video bg-white/[0.03] border border-white/10 overflow-hidden mb-3 md:mb-5 relative transition-all duration-500 group-hover:border-white/40 group-hover:shadow-[0_10px_50px_rgba(255,255,255,0.1)] rounded-sm group/media">
         
         {/* Fallback/Background placeholder - always visible behind media */}
         <div className="absolute inset-0 flex flex-col items-center justify-center text-white/10 font-mono pointer-events-none group-hover:text-white/20 transition-colors">
@@ -86,14 +86,14 @@ function ProjectCard({ project, index }: { project: typeof PROJECTS[0]; index: n
             loop
             muted
             playsInline
-            className="w-full h-full object-cover opacity-100 scale-100 group-hover/media:scale-105 transition-all duration-700 ease-out relative z-10"
+            className="w-full h-full object-cover opacity-100 scale-100 group-hover/media:scale-110 transition-transform duration-[800ms] ease-out relative z-10"
           />
         ) : (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
             src={project.image}
             alt={project.title}
-            className="w-full h-full object-cover opacity-100 scale-100 group-hover/media:scale-105 transition-all duration-700 ease-out relative z-10"
+            className="w-full h-full object-cover opacity-100 scale-100 group-hover/media:scale-110 transition-transform duration-[800ms] ease-out relative z-10"
             onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0'; }}
           />
         )}
