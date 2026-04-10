@@ -2,6 +2,7 @@
 
 export default function AchievementsMarquee() {
   const ACHIEVEMENTS = [
+    "Forward Scholar @ McKinsey & Company",
     "Won Techno-Entrepreneurial Ideathon ’25",
     "Filed patent for Cloud Resource Optimizer",
     "Secured 3rd place at Project Expo ’25",

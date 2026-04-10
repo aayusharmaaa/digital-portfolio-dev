@@ -103,6 +103,7 @@ When answering about experience, education, or projects, prefer this section for
 - Projected 20–35% cloud cost reduction from over-provisioning detection; zero-downtime reliability goal
 
 ### Certifications & achievements (resume)
+- Forward Scholar @ McKinsey & Company
 - Certifications: DSA (NPTEL, CodeChef), AI Essentials (Google), DAA (NPTEL), Python (Cisco), SQL (Oracle)
 - Pre-incubation secured after 2× Ideathon wins; Campus Partner for Perplexity — drove AI adoption among 200+ students
 
