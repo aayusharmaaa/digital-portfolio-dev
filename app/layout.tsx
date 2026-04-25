@@ -5,9 +5,9 @@ export const metadata: Metadata = {
   title: 'Aayush — AI/ML Engineer',
   description: 'Portfolio of Aayush, CSE (AI & ML) student at Manipal University Jaipur',
   icons: {
-    icon: '/icon.png',
-    shortcut: '/icon.png',
-    apple: '/icon.png',
+    icon: '/icon.svg',
+    shortcut: '/icon.svg',
+    apple: '/icon.svg',
   },
   openGraph: {
     title: 'Aayush — AI/ML Engineer',
