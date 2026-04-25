@@ -10,7 +10,7 @@ const PROJECTS = [
     description: 'Real-time ML-driven cloud resource prediction & auto-scaling. Reduces infra costs by 40%.',
     video: '/projects/cloud-optimizer.mp4', 
     image: '/projects/cloud-optimizer.png', 
-    link: '#',
+    link: 'https://github.com/aayusharmaaa/cloud-computing-resource-optimizer',
   },
   {
     id: 'fair-lending',
@@ -18,7 +18,7 @@ const PROJECTS = [
     description: 'Capstone project. GenAI pipeline to test & mitigate bias in education loan approval models using explainability techniques.',
     video: '/projects/fair-lending.mp4',
     image: '/projects/fair-lending.png',
-    link: '#',
+    link: 'https://github.com/aayusharmaaa/Fairlend',
   },
   {
     id: 'voicebot-onboarding',
@@ -26,7 +26,7 @@ const PROJECTS = [
     description:
       'Voicebot onboarding platform that reduced customer integration time by 27%. Built scalable workflows with STT optimization and automated API-driven setup.',
     image: '/projects/voicebot-onboarding.png',
-    link: '#',
+    link: 'https://github.com/aayusharmaaa/spatial-knowledge-board',
   },
   {
     id: 'thoughtspace',
