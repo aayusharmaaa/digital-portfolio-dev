@@ -12,6 +12,13 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Aayush — AI/ML Engineer',
     description: 'Talk to my AI clone. Built different.',
+    images: ['/icon.svg'],
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Aayush — AI/ML Engineer',
+    description: 'Talk to my AI clone. Built different.',
+    images: ['/icon.svg'],
   },
 };
 
