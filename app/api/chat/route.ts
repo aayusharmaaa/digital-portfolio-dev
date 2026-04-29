@@ -16,9 +16,9 @@ function createModel(apiKey: string) {
   });
 }
 
-function isQuotaError(err: unknown): boolean {
+function isPrimaryRetryableError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
-  return /429|quota|resource_exhausted|rate limit|too many requests|timed out|timeout|aborted/i.test(msg);
+  return /401|403|429|quota|resource_exhausted|rate limit|too many requests|timed out|timeout|aborted|unauthorized|permission|forbidden|invalid/i.test(msg);
 }
 
 async function invokeWithTimeout(model: ChatGoogleGenerativeAI, messages: Array<SystemMessage | HumanMessage | AIMessage>) {
@@ -86,8 +86,8 @@ Guidelines:
     try {
       response = await invokeWithTimeout(createModel(primaryKey), langchainMessages);
     } catch (err) {
-      if (!fallbackKey || !isQuotaError(err)) throw err;
-      console.warn('[chat] primary Gemini key exhausted, retrying with fallback key');
+      if (!fallbackKey || !isPrimaryRetryableError(err)) throw err;
+      console.warn('[chat] primary Gemini key failed, retrying with fallback key');
       response = await invokeWithTimeout(createModel(fallbackKey), langchainMessages);
     }
 
@@ -99,7 +99,7 @@ Guidelines:
   } catch (err) {
     console.error('Gemini API error:', err);
     return NextResponse.json(
-      { error: 'API error. Check Gemini API keys in .env.local' },
+      { error: 'Gemini request failed. Check server environment variables and API key restrictions.' },
       { status: 500 }
     );
   }

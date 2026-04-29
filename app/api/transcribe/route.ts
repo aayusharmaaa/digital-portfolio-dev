@@ -6,8 +6,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 const GEMINI_TIMEOUT_MS = 12000;
 
-function isQuotaStatus(status: number, body: string): boolean {
-  return status === 429 || /quota|resource_exhausted|rate limit|too many requests/i.test(body);
+function isPrimaryRetryableStatus(status: number, body: string): boolean {
+  return /401|403|429|quota|resource_exhausted|rate limit|too many requests|unauthorized|permission|forbidden|invalid/i.test(`${status} ${body}`);
 }
 
 async function transcribeWithKey(apiKey: string, mimeType: string, base64: string) {
@@ -94,8 +94,8 @@ export async function POST(req: NextRequest) {
 
   if (!res.ok) {
     const err = await res.text();
-    if (fallbackKey && isQuotaStatus(res.status, err)) {
-      console.warn('[transcribe] primary Gemini key exhausted, retrying with fallback key');
+    if (fallbackKey && isPrimaryRetryableStatus(res.status, err)) {
+      console.warn('[transcribe] primary Gemini key rejected/limited, retrying with fallback key');
       res = await transcribeWithKey(fallbackKey, mimeType, base64);
     } else {
       console.error('[transcribe]', res.status, err);
