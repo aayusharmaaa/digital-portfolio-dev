@@ -26,14 +26,14 @@ const PROJECTS = [
     description:
       'Voicebot onboarding platform that reduced customer integration time by 27%. Built scalable workflows with STT optimization and automated API-driven setup.',
     image: '/projects/voicebot-onboarding.png',
-    link: 'https://github.com/aayusharmaaa/spatial-knowledge-board',
+    link: '#',
   },
   {
     id: 'thoughtspace',
     title: 'ThoughtSpace',
     description: 'Spatial canvas app for rediscovering saved notes across Health, Wealth, and Wisdom. Uses GPT-4 to auto-categorize content and surface meaningful connections.',
     image: '/projects/thoughtbasic.png',
-    link: '#',
+    link: 'https://github.com/aayusharmaaa/spatial-knowledge-board',
   },
 ];
 
@@ -67,6 +67,7 @@ function ProjectCard({ project, index }: { project: typeof PROJECTS[0]; index: n
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      onTouchStart={handleMouseEnter}
       className="group block relative hover:z-20 outline-none touch-manipulation transition-colors"
     >
       {/* Media Box */}
