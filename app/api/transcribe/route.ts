@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
  * Speech-to-text for Human Mode on browsers without Web Speech API (e.g. iPhone Chrome).
  * Uses the same GOOGLE_GEMINI_API_KEY as /api/chat — no OpenAI required.
  */
+const GEMINI_TIMEOUT_MS = 12000;
+
 function isQuotaStatus(status: number, body: string): boolean {
   return status === 429 || /quota|resource_exhausted|rate limit|too many requests/i.test(body);
 }
@@ -11,23 +13,35 @@ function isQuotaStatus(status: number, body: string): boolean {
 async function transcribeWithKey(apiKey: string, mimeType: string, base64: string) {
   const model = 'gemini-2.5-flash';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
 
-  return fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [
-        {
-          parts: [
-            { inlineData: { mimeType, data: base64 } },
-            {
-              text: 'Transcribe the speech in this audio. Output only the spoken words, no labels, quotes, or commentary.',
-            },
-          ],
-        },
-      ],
-    }),
-  });
+  try {
+    return await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              { inlineData: { mimeType, data: base64 } },
+              {
+                text: 'Transcribe the speech in this audio. Output only the spoken words, no labels, quotes, or commentary.',
+              },
+            ],
+          },
+        ],
+      }),
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error(`Gemini transcription timed out after ${GEMINI_TIMEOUT_MS}ms`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -67,7 +81,16 @@ export async function POST(req: NextRequest) {
       buf.length >= 12 && buf.toString('ascii', 4, 8) === 'ftyp' ? 'audio/mp4' : 'audio/webm';
   }
   const base64 = buf.toString('base64');
-  let res = await transcribeWithKey(primaryKey, mimeType, base64);
+  let res: Response;
+  try {
+    res = await transcribeWithKey(primaryKey, mimeType, base64);
+  } catch (err) {
+    if (!fallbackKey) throw err;
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!/quota|resource_exhausted|rate limit|too many requests|timed out|timeout|aborted/i.test(msg)) throw err;
+    console.warn('[transcribe] primary Gemini key failed, retrying with fallback key');
+    res = await transcribeWithKey(fallbackKey, mimeType, base64);
+  }
 
   if (!res.ok) {
     const err = await res.text();

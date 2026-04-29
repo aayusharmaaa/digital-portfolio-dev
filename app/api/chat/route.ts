@@ -5,6 +5,8 @@ import { retrieveContext, getFallbackContext } from '@/lib/rag';
 
 // Enough headroom to finish full sentences; a low cap hard-stops mid-word mid-stream.
 // Default length still comes from the system prompt, not from starving the budget.
+const GEMINI_TIMEOUT_MS = 12000;
+
 function createModel(apiKey: string) {
   return new ChatGoogleGenerativeAI({
     model: 'gemini-2.5-flash',
@@ -16,7 +18,21 @@ function createModel(apiKey: string) {
 
 function isQuotaError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
-  return /429|quota|resource_exhausted|rate limit|too many requests/i.test(msg);
+  return /429|quota|resource_exhausted|rate limit|too many requests|timed out|timeout|aborted/i.test(msg);
+}
+
+async function invokeWithTimeout(model: ChatGoogleGenerativeAI, messages: Array<SystemMessage | HumanMessage | AIMessage>) {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      model.invoke(messages),
+      new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(`Gemini timed out after ${GEMINI_TIMEOUT_MS}ms`)), GEMINI_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -68,11 +84,11 @@ Guidelines:
 
     let response;
     try {
-      response = await createModel(primaryKey).invoke(langchainMessages);
+      response = await invokeWithTimeout(createModel(primaryKey), langchainMessages);
     } catch (err) {
       if (!fallbackKey || !isQuotaError(err)) throw err;
       console.warn('[chat] primary Gemini key exhausted, retrying with fallback key');
-      response = await createModel(fallbackKey).invoke(langchainMessages);
+      response = await invokeWithTimeout(createModel(fallbackKey), langchainMessages);
     }
 
     const reply = typeof response.content === 'string'
