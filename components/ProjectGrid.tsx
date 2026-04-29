@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const PROJECTS = [
   {
@@ -37,22 +37,33 @@ const PROJECTS = [
   },
 ];
 
-function ProjectCard({ project, index }: { project: typeof PROJECTS[0]; index: number }) {
+function ProjectCard({
+  project,
+  index,
+  isActive,
+  anyActive,
+  onActivate,
+  onDeactivate,
+}: {
+  project: typeof PROJECTS[0];
+  index: number;
+  isActive: boolean;
+  anyActive: boolean;
+  onActivate: () => void;
+  onDeactivate: () => void;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const isPlaceholderLink = !project.link || project.link === '#';
 
-  const handleMouseEnter = () => {
-    if (videoRef.current) {
+  useEffect(() => {
+    if (!videoRef.current || !project.video) return;
+    if (isActive) {
       videoRef.current.play().catch(() => {});
-    }
-  };
-
-  const handleMouseLeave = () => {
-    if (videoRef.current) {
+    } else {
       videoRef.current.pause();
       videoRef.current.currentTime = 0;
     }
-  };
+  }, [isActive, project.video]);
 
   return (
     <motion.a
@@ -65,9 +76,9 @@ function ProjectCard({ project, index }: { project: typeof PROJECTS[0]; index: n
       onClick={(e) => {
         if (isPlaceholderLink) e.preventDefault();
       }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      onTouchStart={handleMouseEnter}
+      onMouseEnter={onActivate}
+      onMouseLeave={onDeactivate}
+      onTouchStart={onActivate}
       className="group block relative hover:z-20 outline-none touch-manipulation transition-colors"
     >
       {/* Media Box */}
@@ -79,7 +90,7 @@ function ProjectCard({ project, index }: { project: typeof PROJECTS[0]; index: n
           <span className="text-[9px] uppercase tracking-[0.2em]">{project.title}</span>
         </div>
         
-        {project.video ? (
+        {project.video && (!anyActive || isActive) ? (
           <video
             ref={videoRef}
             src={project.video}
@@ -114,6 +125,8 @@ function ProjectCard({ project, index }: { project: typeof PROJECTS[0]; index: n
 }
 
 export default function ProjectGrid() {
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+
   return (
     <section id="projects" className="max-w-4xl mx-auto w-full px-4 sm:px-6 md:px-8 lg:px-16 py-12 md:py-16">
       {/* Section heading with line */}
@@ -127,7 +140,17 @@ export default function ProjectGrid() {
       {/* 2-column grid like Matthew's site */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
         {PROJECTS.map((project, i) => (
-          <ProjectCard key={project.id} project={project as any} index={i} />
+          <ProjectCard
+            key={project.id}
+            project={project as any}
+            index={i}
+            isActive={activeProjectId === project.id}
+            anyActive={activeProjectId !== null}
+            onActivate={() => setActiveProjectId(project.id)}
+            onDeactivate={() => {
+              if (activeProjectId === project.id) setActiveProjectId(null);
+            }}
+          />
         ))}
       </div>
     </section>
