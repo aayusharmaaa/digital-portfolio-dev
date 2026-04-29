@@ -7,7 +7,7 @@ const PROJECTS = [
   {
     id: 'cloud-optimizer',
     title: 'AI Cloud Resource Optimizer',
-    description: 'Real-time ML-driven cloud resource prediction & auto-scaling. Reduces infra costs by 40%.',
+    description: 'Real-time ML-driven cloud resource prediction & auto-scaling. Reduces infra costs by 20%.',
     video: '/projects/cloud-optimizer.mp4', 
     image: '/projects/cloud-optimizer.png', 
     link: 'https://github.com/aayusharmaaa/cloud-computing-resource-optimizer',

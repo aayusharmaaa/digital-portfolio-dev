@@ -125,7 +125,7 @@ When answering about experience, education, or projects, prefer this section for
 ### 1. AI-Driven Real-Time Cloud Resource Optimizer (Flagship)
 - Stack: FastAPI, TensorFlow, React.js dashboard
 - Uses ML models to predict cloud resource demand and auto-scale infrastructure
-- Reduces infrastructure costs by up to 40%
+- Reduces infrastructure costs by up to 20%
 - Real-time monitoring dashboard built in React
 - Most technically complex project — proud of the prediction accuracy
 
