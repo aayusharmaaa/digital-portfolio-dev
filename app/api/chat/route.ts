@@ -5,15 +5,31 @@ import { retrieveContext, getFallbackContext } from '@/lib/rag';
 
 // Enough headroom to finish full sentences; a low cap hard-stops mid-word mid-stream.
 // Default length still comes from the system prompt, not from starving the budget.
-const model = new ChatGoogleGenerativeAI({
-  model: 'gemini-2.5-flash',
-  apiKey: process.env.GOOGLE_GEMINI_API_KEY,
-  maxOutputTokens: 2048,
-  temperature: 0.65,
-});
+function createModel(apiKey: string) {
+  return new ChatGoogleGenerativeAI({
+    model: 'gemini-2.5-flash',
+    apiKey,
+    maxOutputTokens: 2048,
+    temperature: 0.65,
+  });
+}
+
+function isQuotaError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /429|quota|resource_exhausted|rate limit|too many requests/i.test(msg);
+}
 
 export async function POST(req: NextRequest) {
   try {
+    const primaryKey = process.env.GOOGLE_GEMINI_API_KEY;
+    const fallbackKey = process.env.GOOGLE_GEMINI_API_KEY_FALLBACK;
+    if (!primaryKey) {
+      return NextResponse.json(
+        { error: 'GOOGLE_GEMINI_API_KEY not configured' },
+        { status: 500 }
+      );
+    }
+
     const { messages } = await req.json();
     const lastUserMessage = messages.filter((m: { role: string }) => m.role === 'user').pop()?.content || '';
 
@@ -50,7 +66,15 @@ Guidelines:
       ),
     ];
 
-    const response = await model.invoke(langchainMessages);
+    let response;
+    try {
+      response = await createModel(primaryKey).invoke(langchainMessages);
+    } catch (err) {
+      if (!fallbackKey || !isQuotaError(err)) throw err;
+      console.warn('[chat] primary Gemini key exhausted, retrying with fallback key');
+      response = await createModel(fallbackKey).invoke(langchainMessages);
+    }
+
     const reply = typeof response.content === 'string'
       ? response.content
       : response.content.map((c: any) => c.text || '').join('');
@@ -59,7 +83,7 @@ Guidelines:
   } catch (err) {
     console.error('Gemini API error:', err);
     return NextResponse.json(
-      { error: 'API error. Check GOOGLE_GEMINI_API_KEY in .env.local' },
+      { error: 'API error. Check Gemini API keys in .env.local' },
       { status: 500 }
     );
   }

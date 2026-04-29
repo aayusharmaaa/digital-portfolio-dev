@@ -4,9 +4,36 @@ import { NextRequest, NextResponse } from 'next/server';
  * Speech-to-text for Human Mode on browsers without Web Speech API (e.g. iPhone Chrome).
  * Uses the same GOOGLE_GEMINI_API_KEY as /api/chat — no OpenAI required.
  */
+function isQuotaStatus(status: number, body: string): boolean {
+  return status === 429 || /quota|resource_exhausted|rate limit|too many requests/i.test(body);
+}
+
+async function transcribeWithKey(apiKey: string, mimeType: string, base64: string) {
+  const model = 'gemini-2.5-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [
+            { inlineData: { mimeType, data: base64 } },
+            {
+              text: 'Transcribe the speech in this audio. Output only the spoken words, no labels, quotes, or commentary.',
+            },
+          ],
+        },
+      ],
+    }),
+  });
+}
+
 export async function POST(req: NextRequest) {
-  const key = process.env.GOOGLE_GEMINI_API_KEY;
-  if (!key) {
+  const primaryKey = process.env.GOOGLE_GEMINI_API_KEY;
+  const fallbackKey = process.env.GOOGLE_GEMINI_API_KEY_FALLBACK;
+  if (!primaryKey) {
     return NextResponse.json(
       { error: 'GOOGLE_GEMINI_API_KEY not configured' },
       { status: 500 }
@@ -40,30 +67,22 @@ export async function POST(req: NextRequest) {
       buf.length >= 12 && buf.toString('ascii', 4, 8) === 'ftyp' ? 'audio/mp4' : 'audio/webm';
   }
   const base64 = buf.toString('base64');
-
-  const model = 'gemini-2.5-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
-
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [
-        {
-          parts: [
-            { inlineData: { mimeType, data: base64 } },
-            {
-              text: 'Transcribe the speech in this audio. Output only the spoken words, no labels, quotes, or commentary.',
-            },
-          ],
-        },
-      ],
-    }),
-  });
+  let res = await transcribeWithKey(primaryKey, mimeType, base64);
 
   if (!res.ok) {
     const err = await res.text();
-    console.error('[transcribe]', res.status, err);
+    if (fallbackKey && isQuotaStatus(res.status, err)) {
+      console.warn('[transcribe] primary Gemini key exhausted, retrying with fallback key');
+      res = await transcribeWithKey(fallbackKey, mimeType, base64);
+    } else {
+      console.error('[transcribe]', res.status, err);
+      return NextResponse.json({ error: 'Transcription failed' }, { status: res.status });
+    }
+  }
+
+  if (!res.ok) {
+    const err = await res.text();
+    console.error('[transcribe:fallback]', res.status, err);
     return NextResponse.json({ error: 'Transcription failed' }, { status: res.status });
   }
 
