@@ -5,47 +5,15 @@ import { retrieveContext, getFallbackContext } from '@/lib/rag';
 
 // Enough headroom to finish full sentences; a low cap hard-stops mid-word mid-stream.
 // Default length still comes from the system prompt, not from starving the budget.
-const GEMINI_TIMEOUT_MS = 12000;
-
-function createModel(apiKey: string) {
-  return new ChatGoogleGenerativeAI({
-    model: 'gemini-2.5-flash',
-    apiKey,
-    maxOutputTokens: 2048,
-    temperature: 0.65,
-  });
-}
-
-function isPrimaryRetryableError(err: unknown): boolean {
-  const msg = err instanceof Error ? err.message : String(err);
-  return /401|403|429|quota|resource_exhausted|rate limit|too many requests|timed out|timeout|aborted|unauthorized|permission|forbidden|invalid/i.test(msg);
-}
-
-async function invokeWithTimeout(model: ChatGoogleGenerativeAI, messages: Array<SystemMessage | HumanMessage | AIMessage>) {
-  let timeoutId: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      model.invoke(messages),
-      new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(() => reject(new Error(`Gemini timed out after ${GEMINI_TIMEOUT_MS}ms`)), GEMINI_TIMEOUT_MS);
-      }),
-    ]);
-  } finally {
-    if (timeoutId) clearTimeout(timeoutId);
-  }
-}
+const model = new ChatGoogleGenerativeAI({
+  model: 'gemini-2.5-flash',
+  apiKey: process.env.GOOGLE_GEMINI_API_KEY,
+  maxOutputTokens: 2048,
+  temperature: 0.65,
+});
 
 export async function POST(req: NextRequest) {
   try {
-    const primaryKey = process.env.GOOGLE_GEMINI_API_KEY;
-    const fallbackKey = process.env.GOOGLE_GEMINI_API_KEY_FALLBACK;
-    if (!primaryKey) {
-      return NextResponse.json(
-        { error: 'GOOGLE_GEMINI_API_KEY not configured' },
-        { status: 500 }
-      );
-    }
-
     const { messages } = await req.json();
     const lastUserMessage = messages.filter((m: { role: string }) => m.role === 'user').pop()?.content || '';
 
@@ -82,15 +50,7 @@ Guidelines:
       ),
     ];
 
-    let response;
-    try {
-      response = await invokeWithTimeout(createModel(primaryKey), langchainMessages);
-    } catch (err) {
-      if (!fallbackKey || !isPrimaryRetryableError(err)) throw err;
-      console.warn('[chat] primary Gemini key failed, retrying with fallback key');
-      response = await invokeWithTimeout(createModel(fallbackKey), langchainMessages);
-    }
-
+    const response = await model.invoke(langchainMessages);
     const reply = typeof response.content === 'string'
       ? response.content
       : response.content.map((c: any) => c.text || '').join('');
@@ -99,7 +59,7 @@ Guidelines:
   } catch (err) {
     console.error('Gemini API error:', err);
     return NextResponse.json(
-      { error: 'Gemini request failed. Check server environment variables and API key restrictions.' },
+      { error: 'API error. Check GOOGLE_GEMINI_API_KEY in .env.local' },
       { status: 500 }
     );
   }

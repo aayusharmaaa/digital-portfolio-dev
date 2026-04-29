@@ -5,7 +5,6 @@ import { NextRequest, NextResponse } from 'next/server';
 // Voice setup: elevenlabs.io → Voice Lab → Instant Voice Clone → upload your audio
 
 const VOICE_ID = process.env.ELEVENLABS_VOICE_ID || '';
-const ELEVENLABS_TIMEOUT_MS = 12000;
 
 export async function POST(req: NextRequest) {
   const { text } = await req.json();
@@ -21,48 +20,34 @@ export async function POST(req: NextRequest) {
 
   console.log('[Voice] Calling ElevenLabs | Voice:', VOICE_ID, '| Key prefix:', apiKey.slice(0, 6) + '...');
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), ELEVENLABS_TIMEOUT_MS);
-  let res: Response;
-  try {
-    res = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`,
-      {
-        method: 'POST',
-        headers: {
-          'xi-api-key': apiKey,
-          'Content-Type': 'application/json',
-          Accept: 'audio/mpeg',
+  const res = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`,
+    {
+      method: 'POST',
+      headers: {
+        'xi-api-key': apiKey,
+        'Content-Type': 'application/json',
+        Accept: 'audio/mpeg',
+      },
+      body: JSON.stringify({
+        text,
+        // Eleven Flash v2.5 — https://elevenlabs.io/docs/models
+        model_id: 'eleven_flash_v2_5',
+        voice_settings: {
+          // Slower speech for clarity (panel shows Speed biased toward "Slower").
+          speed: 1,
+          // Panel shows Stability biased toward "More variable".
+          stability: 0.5,
+          // Panel shows Similarity biased toward "High".
+          similarity_boost: 0.75,
+          // Panel shows Style Exaggeration = None.
+          style: 0.2,
+          // Panel toggle appears off.
+          use_speaker_boost: false,
         },
-        signal: controller.signal,
-        body: JSON.stringify({
-          text,
-          // Eleven Flash v2.5 — https://elevenlabs.io/docs/models
-          model_id: 'eleven_flash_v2_5',
-          voice_settings: {
-            // Slower speech for clarity (panel shows Speed biased toward "Slower").
-            speed: 1,
-            // Panel shows Stability biased toward "More variable".
-            stability: 0.5,
-            // Panel shows Similarity biased toward "High".
-            similarity_boost: 0.75,
-            // Panel shows Style Exaggeration = None.
-            style: 0.2,
-            // Panel toggle appears off.
-            use_speaker_boost: false,
-          },
-        }),
-      }
-    );
-  } catch (err) {
-    if (err instanceof Error && err.name === 'AbortError') {
-      console.error('[Voice] ElevenLabs timed out');
-      return NextResponse.json({ error: 'Voice generation timed out' }, { status: 504 });
+      }),
     }
-    throw err;
-  } finally {
-    clearTimeout(timeoutId);
-  }
+  );
 
   if (!res.ok) {
     const err = await res.text();
