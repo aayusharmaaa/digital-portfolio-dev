@@ -25,10 +25,12 @@ const PROMPTS = [
 const CURRENTLY: {
   icon: string;
   label: string;
-  value: string;
+  value?: string;
   logo?: string;
-  /** If set, clicking the value asks the clone this question (first three items only) */
+  /** If set, clicking the value asks the clone this question */
   promptQuestion?: string;
+  /** Inline company names with logos on one line (e.g. Prev- Deloitte, Airtel, Coforge) */
+  companies?: { name: string; logo: string; promptQuestion?: string }[];
 }[] = [
   {
     icon: '►',
@@ -46,26 +48,30 @@ const CURRENTLY: {
   },
   {
     icon: '►',
-    label: 'genai intern (prev) @',
-    value: 'Coforge',
-    logo: '/logos/coforge.png',
-    promptQuestion: 'Tell me about your GenAI internship at Coforge — what did you build and what were the results?',
+    label: 'Prev-',
+    companies: [
+      {
+        name: 'Deloitte',
+        logo: '/logos/deloitte.png',
+        promptQuestion: 'Tell me about your capstone project with Deloitte — what is FairLend and what did you build?',
+      },
+      {
+        name: 'Airtel',
+        logo: '/logos/airtel.png',
+        promptQuestion: 'How was your software engineering internship at Airtel? What did you work on?',
+      },
+      {
+        name: 'Coforge',
+        logo: '/logos/coforge.png',
+        promptQuestion: 'Tell me about your GenAI internship at Coforge — what did you build and what were the results?',
+      },
+    ],
   },
   {
     icon: '►',
-    label: 'capstone (prev) @',
-    value: 'Deloitte',
-    logo: '/logos/deloitte.png',
-    promptQuestion: 'Tell me about your capstone project with Deloitte — what is FairLend and what did you build?',
+    label: '2x ideathon winner ',
+    value: '(pre-incubation secured)',
   },
-  {
-    icon: '►',
-    label: 'swe intern (prev) @',
-    value: 'Airtel',
-    logo: '/logos/airtel.png',
-    promptQuestion: 'How was your software engineering internship at Airtel? What did you work on?',
-  },
-  { icon: '►', label: '2x ideathon winner ', value: '(pre-incubation secured)' },
 ];
 
 const GREETING = "Hey, what's up! I'm Aayush. Feel free to ask me anything — about my projects, experience, or whatever's on your mind.";
@@ -1001,20 +1007,64 @@ export default function Home() {
           <div className="flex-1 h-px bg-white/10" />
         </div>
         <div className="space-y-4 md:space-y-5">
-          {CURRENTLY.map(({ icon, label, value, logo, promptQuestion }) => {
+          {CURRENTLY.map(({ icon, label, value, logo, promptQuestion, companies }) => {
             const valueClass =
               'text-white/85 underline underline-offset-4 decoration-white/15 break-all font-mono text-[14px] sm:text-[15px] md:text-[17px] leading-relaxed';
-            const valueNode = promptQuestion ? (
-              <button
-                type="button"
-                onClick={() => handleCurrentlyClick(promptQuestion)}
-                className={`text-left ${valueClass} hover:text-white hover:decoration-white/50 cursor-pointer bg-transparent border-0 p-0 transition-colors`}
-              >
-                {value}
-              </button>
-            ) : (
-              <span className={valueClass}>{value}</span>
-            );
+            const logoClass =
+              'inline-block h-[22px] w-[22px] md:h-7 md:w-7 object-contain shrink-0 align-baseline translate-y-[3px] rounded-[3px] bg-white/[0.06] p-[2px]';
+
+            if (companies?.length) {
+              return (
+                <div
+                  key={`${label}-${companies.map((c) => c.name).join('-')}`}
+                  className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[14px] sm:text-[15px] md:text-[17px] font-mono leading-relaxed"
+                >
+                  <span className="text-white/25 shrink-0">{icon}</span>
+                  <span className="text-white/45 shrink-0">{label}</span>
+                  {companies.map((company, i) => {
+                    const nameNode = company.promptQuestion ? (
+                      <button
+                        type="button"
+                        onClick={() => handleCurrentlyClick(company.promptQuestion!)}
+                        className={`text-left ${valueClass} hover:text-white hover:decoration-white/50 cursor-pointer bg-transparent border-0 p-0 transition-colors`}
+                      >
+                        {company.name}
+                      </button>
+                    ) : (
+                      <span className={valueClass}>{company.name}</span>
+                    );
+                    return (
+                      <span key={company.name} className="inline-flex items-baseline gap-x-1.5 shrink-0">
+                        <img
+                          src={company.logo}
+                          alt=""
+                          width={28}
+                          height={28}
+                          className={logoClass}
+                          aria-hidden
+                        />
+                        {nameNode}
+                        {i < companies.length - 1 ? <span className="text-white/45">,</span> : null}
+                      </span>
+                    );
+                  })}
+                </div>
+              );
+            }
+
+            const valueNode = value ? (
+              promptQuestion ? (
+                <button
+                  type="button"
+                  onClick={() => handleCurrentlyClick(promptQuestion)}
+                  className={`text-left ${valueClass} hover:text-white hover:decoration-white/50 cursor-pointer bg-transparent border-0 p-0 transition-colors`}
+                >
+                  {value}
+                </button>
+              ) : (
+                <span className={valueClass}>{value}</span>
+              )
+            ) : null;
             return (
               <div key={`${label}-${value}`} className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[14px] sm:text-[15px] md:text-[17px] font-mono leading-relaxed">
                 <span className="text-white/25 shrink-0">{icon}</span>
@@ -1026,7 +1076,7 @@ export default function Home() {
                       alt=""
                       width={28}
                       height={28}
-                      className="inline-block h-[22px] w-[22px] md:h-7 md:w-7 object-contain shrink-0 align-baseline translate-y-[3px] rounded-[3px] bg-white/[0.06] p-[2px]"
+                      className={logoClass}
                       aria-hidden
                     />
                     {valueNode}
