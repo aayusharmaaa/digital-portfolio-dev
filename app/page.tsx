@@ -32,10 +32,10 @@ const CURRENTLY: {
 }[] = [
   {
     icon: '►',
-    label: 'genai intern (prev) @',
-    value: 'Coforge',
-    logo: '/logos/coforge.png',
-    promptQuestion: 'Tell me about your GenAI internship at Coforge — what did you build and what were the results?',
+    label: 'gtm engineer @',
+    value: 'Recrivio',
+    logo: '/logos/recrivio.png',
+    promptQuestion: 'Tell me about your role as a GTM engineer at Recrivio — what are you working on?',
   },
   {
     icon: '►',
@@ -43,6 +43,13 @@ const CURRENTLY: {
     value: 'Manipal University Jaipur',
     logo: '/logos/manipal.png',
     promptQuestion: 'Tell me about your engineering degree at Manipal University Jaipur — what are you studying and how is it going?',
+  },
+  {
+    icon: '►',
+    label: 'genai intern (prev) @',
+    value: 'Coforge',
+    logo: '/logos/coforge.png',
+    promptQuestion: 'Tell me about your GenAI internship at Coforge — what did you build and what were the results?',
   },
   {
     icon: '►',

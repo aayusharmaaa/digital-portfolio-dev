@@ -72,6 +72,9 @@ When answering about experience, education, or projects, prefer this section for
 - Currently based between university and home (Gurgaon)
 
 ### Work experience
+**GTM Engineer @ Recrivio** — Present
+- Currently working as a GTM (Go-to-Market) Engineer at Recrivio, a global talent/workforce technology company
+
 **GenAI Intern @ Coforge** (Noida, Uttar Pradesh) — May 2026 – Jul 2026
 - Delivered cloud-native Generative AI solutions for Fortune 500 clients across design, implementation, deployment, and production reliability
 - Built an end-to-end AI Interview Avatar platform with real-time speech, LLM inference, APIs, and conversational workflows; processed 250+ technical assessments
@@ -204,9 +207,9 @@ When answering about experience, education, or projects, prefer this section for
 - AWS basics
 
 ## Goals & Ambitions
-- Targeting internships at top-tier tech companies — IBM, Google, Microsoft
+- Currently GTM Engineer at Recrivio
+- Targeting roles at top-tier tech companies — IBM, Google, Microsoft
 - Wants to build products at the intersection of AI and financial services
-- Currently seeking Summer 2026 internships
 - Believes in shipping fast and iterating — "done is better than perfect"
 
 ## How Aayush Thinks & Speaks
