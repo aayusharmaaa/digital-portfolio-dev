@@ -22,6 +22,7 @@ const EXPERIENCES: Experience[] = [
     company: 'Coforge',
     date: 'May — Jul 2026',
     location: 'Noida, Uttar Pradesh',
+    logo: '/logos/coforge.png',
     description: (
       <>
         Delivered <strong>cloud-native Generative AI</strong> solutions for Fortune 500 clients across

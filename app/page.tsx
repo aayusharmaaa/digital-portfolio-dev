@@ -34,6 +34,7 @@ const CURRENTLY: {
     icon: '►',
     label: 'genai intern (prev) @',
     value: 'Coforge',
+    logo: '/logos/coforge.png',
     promptQuestion: 'Tell me about your GenAI internship at Coforge — what did you build and what were the results?',
   },
   {
