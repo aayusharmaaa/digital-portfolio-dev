@@ -17,101 +17,81 @@ type Experience = {
 
 const EXPERIENCES: Experience[] = [
   {
-    id: 'deloitte',
-    role: 'Capstone Project — FairLend',
-    company: 'Deloitte',
-    date: '2025 — Present',
-    location: 'Remote · Industry Mentored',
-    logo: '/logos/deloitte.png',
+    id: 'coforge',
+    role: 'GenAI Intern',
+    company: 'Coforge',
+    date: 'May — Jul 2026',
+    location: 'Noida, Uttar Pradesh',
     description: (
       <>
-        Built a <strong>fairness validation</strong> and <strong>audit</strong> platform for{' '}
-        <strong>education-loan risk models</strong>, enabling transparent and accountable{' '}
-        <strong>AI decision-making</strong>.
+        Delivered <strong>cloud-native Generative AI</strong> solutions for Fortune 500 clients across
+        design, implementation, deployment, and production reliability.
       </>
     ),
     highlights: [
       <>
-        Designed a <strong>GenAI-powered validation pipeline</strong> to evaluate bias across{' '}
-        <strong>3,000+ synthetic user profiles</strong> covering diverse demographic scenarios.
+        Engineered an end-to-end <strong>AI Interview Avatar</strong> platform integrating real-time speech
+        processing, <strong>LLM inference</strong>, APIs, and conversational workflows — processed{' '}
+        <strong>250+ technical assessments</strong>.
       </>,
       <>
-        Identified hidden algorithmic biases across five key dimensions: geographic, income, gender, credit, and edge cases
+        Achieved <strong>94% question-relevance accuracy</strong> and{' '}
+        <strong>sub-500 ms</strong> end-to-end speech-to-LLM-to-speech latency while reducing operational
+        costs by <strong>35%</strong>.
+      </>,
+    ],
+  },
+  {
+    id: 'deloitte',
+    role: 'Tech Lead — Deloitte Capstone',
+    company: 'Deloitte',
+    date: 'Oct 2025 — Jan 2026',
+    location: 'Remote',
+    logo: '/logos/deloitte.png',
+    description: (
+      <>
+        Built <strong>FairLend</strong>, a GenAI-powered fair-lending validation workbench for banks and
+        NBFCs.
+      </>
+    ),
+    highlights: [
+      <>
+        Built FairLend with <strong>FastAPI</strong>, <strong>Next.js</strong>,{' '}
+        <strong>PostgreSQL</strong>, and <strong>Google Gemini</strong> — cutting audit time from{' '}
+        <strong>4–6 weeks</strong> to <strong>2–3 days</strong> per model run across{' '}
+        <strong>3,100+ synthetic profiles</strong> and <strong>5 fairness dimensions</strong>.
       </>,
       <>
-        Developed <strong>policy-driven mitigation checks</strong> with{' '}
-        <strong>before/after score comparisons</strong> to ensure <strong>auditability</strong> and compliance.
-      </>,
-      <>
-        Introduced a <strong>Human-in-the-Loop</strong> feedback system, allowing auditors to iteratively refine{' '}
-        <strong>model behavior</strong> and improve <strong>fairness metrics</strong>.
-      </>,
-      <>
-        Delivered a <strong>dashboard</strong> for <strong>non-technical stakeholders</strong>, translating
-        complex fairness signals into concise, <strong>actionable insights</strong>.
+        Partnered with a <strong>4-member team</strong> and Deloitte mentors to align fairness KPIs with
+        RBI-style governance standards, producing audit-grade evidence packs for banks and NBFCs.
       </>,
     ],
   },
   {
     id: 'airtel',
-    role: 'Software Engineering Intern',
+    role: 'Software Engineer Intern',
     company: 'Airtel',
-    date: 'May — July 2025',
-    location: 'India',
+    date: 'May — Jul 2025',
+    location: 'Gurugram, Haryana',
     logo: '/logos/airtel.png',
     description: (
       <>
-        Worked on <strong>production-grade backend systems</strong> and internal platforms in a high-scale
-        telecom environment.
+        Built production voice-AI and backend systems in a high-scale telecom environment.
       </>
     ),
     highlights: [
       <>
-        Engineered a <strong>Voicebot Onboarding</strong> platform, reducing customer integration time by{' '}
-        <strong>27%</strong>.
+        Built a <strong>Voicebot Onboarding</strong> platform that reduced enterprise-customer integration
+        time by <strong>27%</strong>.
       </>,
       <>
-        Fine-tuned <strong>Speech-to-Text</strong> models for <strong>Indian languages</strong>, improving
-        transcription accuracy in real-world scenarios.
+        Developed and scaled backend microservices with <strong>Spring Boot</strong>,{' '}
+        <strong>Next.js</strong>, and <strong>MongoDB</strong>, supporting{' '}
+        <strong>10,000+ concurrent requests</strong> at <strong>sub-200 ms latency</strong>.
       </>,
       <>
-        Built scalable architectures (<strong>Next.js</strong>, <strong>Spring Boot</strong>, <strong>MongoDB</strong>)
-        supporting <strong>10,000+ concurrent requests</strong> with <strong>sub-200ms latency</strong>.
-      </>,
-      <>
-        Integrated <strong>REST APIs</strong> with <strong>LLM</strong> fallback handling, reducing manual intervention by{' '}
-        <strong>40%</strong> and improving intent recognition by <strong>25%</strong>.
-      </>,
-      <>
-        Strengthened system reliability through <strong>robust validation</strong> and{' '}
-        <strong>request/response optimization</strong>.
-      </>,
-    ],
-  },
-  {
-    id: 'turingsapiens',
-    role: 'Head of Projects & Treasurer',
-    company: 'Turing Sapiens',
-    date: '2023 — Present',
-    location: 'Manipal University Jaipur',
-    description: (
-      <>
-        Led technical initiatives and operations for a <strong>university-wide AI/tech community</strong>.
-      </>
-    ),
-    highlights: [
-      <>
-        Mentored student teams on project design, <strong>ML</strong> implementation, and technical storytelling.
-      </>,
-      <>
-        Spearheaded hackathons and workshops, framing problem statements and managing end-to-end execution for{' '}
-        <strong>500+ participants</strong>.
-      </>,
-      <>
-        Oversaw budgeting, sponsorships, and financial planning to sustain <strong>large-scale community programs</strong>.
-      </>,
-      <>
-        Conducted core team recruitment, evaluating both <strong>technical</strong> and <strong>leadership</strong> potential.
+        Fine-tuned <strong>Speech-to-Text</strong> models for Indian languages, improving production
+        transcription accuracy and enabling multilingual voice-AI workflows.
       </>,
     ],
   },

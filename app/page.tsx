@@ -32,6 +32,12 @@ const CURRENTLY: {
 }[] = [
   {
     icon: '►',
+    label: 'genai intern (prev) @',
+    value: 'Coforge',
+    promptQuestion: 'Tell me about your GenAI internship at Coforge — what did you build and what were the results?',
+  },
+  {
+    icon: '►',
     label: 'engineering @',
     value: 'Manipal University Jaipur',
     logo: '/logos/manipal.png',
@@ -39,20 +45,19 @@ const CURRENTLY: {
   },
   {
     icon: '►',
-    label: 'capstone project @',
+    label: 'capstone (prev) @',
     value: 'Deloitte',
     logo: '/logos/deloitte.png',
     promptQuestion: 'Tell me about your capstone project with Deloitte — what is FairLend and what did you build?',
   },
   {
     icon: '►',
-    label: 'swe intern @',
-    value: 'Airtel (prev)',
+    label: 'swe intern (prev) @',
+    value: 'Airtel',
     logo: '/logos/airtel.png',
     promptQuestion: 'How was your software engineering internship at Airtel? What did you work on?',
   },
   { icon: '►', label: '2x ideathon winner ', value: '(pre-incubation secured)' },
-  { icon: '►', label: 'seeking', value: 'summer 2026 internships' },
 ];
 
 const GREETING = "Hey, what's up! I'm Aayush. Feel free to ask me anything — about my projects, experience, or whatever's on your mind.";

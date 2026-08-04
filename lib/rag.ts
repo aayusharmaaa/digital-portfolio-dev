@@ -68,57 +68,58 @@ export function getFallbackContext(): string {
 When answering about experience, education, or projects, prefer this section for accuracy.
 
 ### Education
-- Manipal University Jaipur — B.Tech Computer Science & Engineering (AI & ML), 2023 – Present
-- Delhi Public School Sec-45, Gurugram — PCM + Computer Science, 2019 – 2023
+- Manipal University Jaipur — B.Tech Computer Science Engineering (AI & ML), 2023 – 2027 (Expected)
+- Currently based between university and home (Gurgaon)
 
 ### Work experience
-**SDE Intern @ Airtel** (Gurugram) — May 2025 – Jul 2025
-- Built a Voicebot Onboarding platform; cut customer integration time ~27%
-- Fine-tuned STT (speech-to-text) for Indian languages; improved transcription accuracy
-- Stack/architecture: Next.js, Spring Boot, MongoDB — 10,000+ daily concurrent requests, under 200ms latency
-- REST APIs + LLM fallback for onboarding automation; ~40% less manual work, ~25% fewer intent-recognition errors
+**GenAI Intern @ Coforge** (Noida, Uttar Pradesh) — May 2026 – Jul 2026
+- Delivered cloud-native Generative AI solutions for Fortune 500 clients across design, implementation, deployment, and production reliability
+- Built an end-to-end AI Interview Avatar platform with real-time speech, LLM inference, APIs, and conversational workflows; processed 250+ technical assessments
+- Achieved 94% question-relevance accuracy and sub-500 ms end-to-end speech-to-LLM-to-speech latency; cut operational costs by 35%
 
-**Treasurer @ Turing Sapiens** (Manipal University Jaipur) — Aug 2025 – Present
-- Financial planning, sponsorships, budgeting for hackathons and society ops
-- Interviewed Core Committee candidates (technical + interpersonal)
+**Tech Lead — Deloitte Capstone @ Deloitte** (Remote) — Oct 2025 – Jan 2026
+- Built FairLend with FastAPI, Next.js, PostgreSQL, and Google Gemini — cut audit time from 4–6 weeks to 2–3 days per model run across 3,100+ synthetic profiles and 5 fairness dimensions
+- Partnered with a 4-member team and Deloitte mentors to align fairness KPIs with RBI-style governance standards for banks and NBFCs
 
-**Head of Projects @ Turing Sapiens** (Manipal University Jaipur) — Aug 2024 – Apr 2025
-- Curated problem statements for 3 university hackathons (500+ participants)
-- Focus on web dev and hands-on project upskilling
+**Software Engineer Intern @ Airtel** (Gurugram, Haryana) — May 2025 – Jul 2025
+- Built a Voicebot Onboarding platform; reduced enterprise-customer integration time by 27%
+- Scaled backend microservices with Spring Boot, Next.js, and MongoDB — 10,000+ concurrent requests at sub-200 ms latency
+- Fine-tuned Speech-to-Text models for Indian languages for multilingual voice-AI workflows
 
 ### Skills (resume)
-- Languages / frameworks: Python, C/C++, JavaScript/TypeScript, SQL (Postgres), HTML/CSS, React, Next.js
-- Tools: Git, GCP, VS Code, PyCharm, Postman, Grafana, Jira, Docker
-- CS: DBMS, OOP, DSA, OS
-- Libraries: Pandas, NumPy, Scikit-learn, Matplotlib, PyTorch, MUI
+- Languages: Python, C, C++, JavaScript, TypeScript, SQL
+- Software Engineering: DSA, REST APIs, Microservices, Scalable Backend Systems, Cloud-Native Architecture, Real-Time Systems, OOP
+- Frameworks and Data: FastAPI, Spring Boot, Next.js, React, MongoDB, PostgreSQL, BigQuery, Docker
+- AI/ML: LLM Integration, LangChain, Google Gemini, RAG, NLP, STT, TensorFlow, PyTorch, Scikit-learn, LSTM, XGBoost
+- Tools: Git, Postman, Grafana, Jira, VS Code
 
 ### Projects (resume detail)
-**Deloitte Capstone — Fair Lending AI Validation Workbench** (Next.js, FastAPI, LangChain) — Oct 2025 – Present
-- GenAI audit platform for algorithmic bias in student loans; 3,100+ synthetic profiles across demographics
-- Human-in-the-loop workflow; agentic iteration from auditor feedback; 0.95+ approval-rate parity target
-- Compliance dashboard for fairness metrics; iterated with Deloitte mentors
+**Deloitte Capstone — FairLend** (Next.js, FastAPI, PostgreSQL, Google Gemini) — Oct 2025 – Jan 2026
+- GenAI fair-lending validation workbench; 3,100+ synthetic profiles across 5 fairness dimensions
+- Cut audit time from 4–6 weeks to 2–3 days; RBI-style governance evidence packs for banks/NBFCs
 
-**Cloud Computing Resource Optimizer** (Python, React.js, TensorFlow) — Sep 2024 – May 2025 — Patent pending
-- LSTM + Docker for predictive CPU/memory autoscaling ahead of demand
-- Projected 20–35% cloud cost reduction from over-provisioning detection; zero-downtime reliability goal
+**Cloud Computing Resource Optimizer** (Python, TensorFlow, BigQuery, Docker) — Sep 2024 – May 2025
+- LSTM + Docker predictive autoscaling for CPU/memory demand forecasting
+- Simulated 20–35% infrastructure-cost reduction while maintaining availability
 
 ### Certifications & achievements (resume)
 - Forward Scholar @ McKinsey & Company
-- Certifications: DSA (NPTEL, CodeChef), AI Essentials (Google), DAA (NPTEL), Python (Cisco), SQL (Oracle)
-- Pre-incubation secured after 2× Ideathon wins; Campus Partner for Perplexity — drove AI adoption among 200+ students
+- Certifications: Google AI Essentials; NPTEL DAA; NPTEL and CodeChef DSA
+- Startup pre-incubation after two Ideathon wins; Perplexity Campus Partner (200+ students)
 
 ## Education (summary)
-- B.Tech CSE (AI & ML), Manipal University Jaipur — ongoing (aligned with resume 2023 – Present)
-- Strong foundation in ML, deep learning, NLP, and software engineering
-- Active through Turing Sapiens
+- B.Tech CSE (AI & ML), Manipal University Jaipur — 2023 – 2027 (Expected)
 
 ## Work Experience (summary)
 
-### Airtel internship (May–July 2025)
-- Same as resume: voicebot onboarding, STT fine-tuning, Next.js/Spring Boot/MongoDB at scale, LLM fallback pipelines
+### Coforge GenAI internship (May–July 2026)
+- Cloud-native GenAI for Fortune 500 clients; AI Interview Avatar with sub-500 ms latency and 94% relevance
 
-### Turing Sapiens
-- Treasurer (Aug 2025 – Present) + prior Head of Projects (Aug 2024 – Apr 2025) — hackathons, finance, interviews, problem statements
+### Deloitte Capstone (Oct 2025 – Jan 2026)
+- Tech Lead on FairLend fair-lending GenAI workbench
+
+### Airtel internship (May–July 2025)
+- Voicebot onboarding, STT fine-tuning, Spring Boot/Next.js/MongoDB at scale
 
 ## Projects
 
