@@ -105,6 +105,22 @@ When answering about experience, education, or projects, prefer this section for
 - LSTM + Docker predictive autoscaling for CPU/memory demand forecasting
 - Simulated 20–35% infrastructure-cost reduction while maintaining availability
 
+**Tallystick** (LightGBM, SHAP, SQLite, DuckDB) — live at tallystick-one.vercel.app
+- Credit-scoring engine where governance is a byproduct of scoring, not post-hoc paperwork
+- Impact: the six-month model-risk and fair-lending review after a model is built collapses into a byproduct of scoring one applicant
+- 28-page SR 11-7 / EU AI Act validation pack (12 sections) generated in under 30 seconds instead of assembled by hand
+- Pareto-frontier search across 226 challenger models to surface less discriminatory alternatives
+- 51,038 unseen 2025 FFIEC HMDA applications scored at 0.876 out-of-time AUC, model running client-side in the browser
+- Every decision emits a SHA-256 hash-chained, tamper-evident ledger entry plus SHAP reason codes
+
+**Prism — Cursor for PMs** (Next.js 15, React 19, TypeScript, Claude) — live at prism-landing-delta.vercel.app
+- AI workspace for product managers; every AI change arrives as a diff accepted or rejected hunk by hunk
+- Impact: 9 agent tools can mutate the workspace, and 0 changes are ever applied without the PM's approval — every mutation is reviewable
+- Seeded workspace has 8 interconnected evidence sources and pivots 40 raw support tickets on request
+- Agent cites the interview, ticket, or metric behind every claim before proposing a PRD edit
+- No hosted instance by design — the landing page walkthrough is a scripted playback; the real workspace runs locally
+- Markdown + CSV editing, threaded comments, version snapshots, Ask/Agent/Plan modes, Jira and Linear integrations
+
 ### Certifications & achievements (resume)
 - Forward Scholar @ McKinsey & Company
 - Certifications: Google AI Essentials; NPTEL DAA; NPTEL and CodeChef DSA

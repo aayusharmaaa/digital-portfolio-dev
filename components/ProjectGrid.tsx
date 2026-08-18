@@ -15,10 +15,26 @@ const PROJECTS = [
   {
     id: 'fair-lending',
     title: 'FairLend (Fair Lending AI Workbench)',
-    description: 'Capstone project. GenAI pipeline to test & mitigate bias in education loan approval models using explainability techniques.',
+    description: 'Deloitte capstone. GenAI workbench that stress-tests education loan models across 5 fairness dimensions and 3,100+ profiles, cutting a 4–6 week bias audit down to 2–3 days.',
     video: '/projects/fair-lending.mp4',
     image: '/projects/fair-lending.png',
-    link: 'https://github.com/aayusharmaaa/Fairlend',
+    link: 'https://fairlend-landing-page.vercel.app/',
+  },
+  {
+    id: 'tallystick',
+    title: 'Tallystick',
+    description:
+      'Collapses six months of model-risk and fair-lending review into a byproduct of scoring. 28-page validation pack in 30 seconds, 226 challengers searched for a fairer model.',
+    image: '/projects/tallystick.png',
+    link: 'https://tallystick-one.vercel.app/',
+  },
+  {
+    id: 'prism',
+    title: 'Prism (Cursor for PMs)',
+    description:
+      "Cursor's interaction model applied to product decisions. 9 agent tools can rewrite your PRDs, 0 changes land without approval — every edit is a diff, cited to its source.",
+    image: '/projects/prism.png',
+    link: 'https://prism-landing-delta.vercel.app/',
   },
   {
     id: 'voicebot-onboarding',
