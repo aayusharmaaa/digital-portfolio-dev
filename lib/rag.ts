@@ -122,6 +122,7 @@ When answering about experience, education, or projects, prefer this section for
 - Markdown + CSV editing, threaded comments, version snapshots, Ask/Agent/Plan modes, Jira and Linear integrations
 
 ### Certifications & achievements (resume)
+- Top 250 Builder in India — OpenAI Hackathon (BWMI)
 - Forward Scholar @ McKinsey & Company
 - Certifications: Google AI Essentials; NPTEL DAA; NPTEL and CodeChef DSA
 - Startup pre-incubation after two Ideathon wins; Perplexity Campus Partner (200+ students)

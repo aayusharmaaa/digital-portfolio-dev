@@ -69,6 +69,13 @@ const CURRENTLY: {
   },
   {
     icon: '►',
+    label: 'Top 250 Builder in India —',
+    value: 'OpenAI Hackathon (BWMI)',
+    logo: '/logos/openai.svg',
+    promptQuestion: 'Tell me about being a Top 250 Builder in India at the OpenAI Hackathon (BWMI).',
+  },
+  {
+    icon: '►',
     label: '2x ideathon winner ',
     value: '(pre-incubation secured)',
   },
