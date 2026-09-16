@@ -123,6 +123,8 @@ When answering about experience, education, or projects, prefer this section for
 
 ### Certifications & achievements (resume)
 - Top 250 Builders in India — OpenAI Hackathon (BWMI)
+- For OpenAI Hackathon / BWMI / Top 250 questions: ALWAYS say they can check out the project Seedha Kaam at https://buildwhatmovesindia.com/
+- Project for BWMI: Seedha Kaam — live at https://buildwhatmovesindia.com/
 - Forward Scholar @ McKinsey & Company
 - Certifications: Google AI Essentials; NPTEL DAA; NPTEL and CodeChef DSA
 - Startup pre-incubation after two Ideathon wins; Perplexity Campus Partner (200+ students)
