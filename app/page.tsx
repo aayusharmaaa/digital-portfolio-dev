@@ -72,8 +72,7 @@ const CURRENTLY: {
     label: 'Top 250 Builders in India —',
     value: 'OpenAI Hackathon (BWMI)',
     logo: '/logos/openai.svg',
-    promptQuestion:
-      'Tell me about being selected as a Top 250 Builder in India at the OpenAI Hackathon (BWMI), and mention my project Seedha Kaam at https://buildwhatmovesindia.com/',
+    promptQuestion: 'Tell me about being selected as a Top 250 Builder in India at the OpenAI Hackathon (BWMI).',
   },
   {
     icon: '►',
